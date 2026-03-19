@@ -13,11 +13,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.example.kpappercutting.ui.navigation.SteeringBottomBar
-import com.example.kpappercutting.ui.screens.CommunityScreen
-import com.example.kpappercutting.ui.screens.CreateScreen
-import com.example.kpappercutting.ui.screens.CultureScreen
-import com.example.kpappercutting.ui.screens.HomeScreen
-import com.example.kpappercutting.ui.screens.ProfileScreen
+import com.example.kpappercutting.ui.features.community.CommunityScreen
+import com.example.kpappercutting.ui.features.creation.CreateScreen
+import com.example.kpappercutting.ui.features.culture.CultureScreen
+import com.example.kpappercutting.ui.features.home.HomeScreen
+import com.example.kpappercutting.ui.features.profile.ProfileScreen
 
 enum class Screen {
     Home, Culture, Create, Community, Profile
