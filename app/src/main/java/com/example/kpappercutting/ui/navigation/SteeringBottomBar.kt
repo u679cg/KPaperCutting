@@ -1,6 +1,5 @@
 package com.example.kpappercutting.ui.navigation
 
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,10 +13,10 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,30 +28,37 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.kpappercutting.ui.Screen
-
-
-
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.material3.MaterialTheme
 import com.example.kpappercutting.R
+import com.example.kpappercutting.ui.theme.KPappercuttingTheme
 
 
 @Composable
 fun SteeringBottomBar(current: Screen, onSelect: (Screen) -> Unit) {
     // visual dimensions
     val barHeight: Dp = 68.dp
-    Box(modifier = Modifier.fillMaxWidth()) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface)
+            .windowInsetsPadding(WindowInsets.navigationBars)
+    ) {
         // 圆角背景板
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(barHeight),
-            color = Color.White,
+            color = MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-            tonalElevation = 8.dp
+//            tonalElevation = 0.dp
+
         ) {
-            // empty container - visual only
+            // Empty container for the bar background.
         }
 
         // Row of 4 side items with a spacer for the center helm
@@ -94,7 +100,7 @@ fun SteeringBottomBar(current: Screen, onSelect: (Screen) -> Unit) {
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .offset(y = (-32).dp) // pull up to overlap
-                .size(88.dp)
+                .size(72.dp)
                 .shadow(8.dp, shape = CircleShape)
                 .background(color = colorResource(id = R.color.primary), shape = CircleShape)
                 .clickable { onSelect(Screen.Create) },
@@ -147,7 +153,7 @@ private fun SmallNavItem(
 @Composable
 fun SteeringBottomBarPreviewLight() {
     // 使用原项目的 MaterialTheme
-    androidx.compose.material3.MaterialTheme {
+    KPappercuttingTheme(darkTheme = false) {
         SteeringBottomBar(current = Screen.Home, onSelect = {})
     }
 }
@@ -155,7 +161,7 @@ fun SteeringBottomBarPreviewLight() {
 @Preview(showBackground = true)
 @Composable
 fun SteeringBottomBarPreviewDark() {
-    androidx.compose.material3.MaterialTheme(colorScheme = androidx.compose.material3.darkColorScheme()) {
+    KPappercuttingTheme() {
         SteeringBottomBar(current = Screen.Create, onSelect = {})
     }
 }
