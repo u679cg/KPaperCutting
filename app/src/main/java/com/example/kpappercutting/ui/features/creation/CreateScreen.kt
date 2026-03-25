@@ -127,7 +127,7 @@ fun TopControlBar(currentShape: PaperShape, onShapeChange: (PaperShape) -> Unit)
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
+            .padding(16.dp,0.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {

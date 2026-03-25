@@ -14,8 +14,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.kpappercutting.ui.features.home.HomeScreen
 import com.example.kpappercutting.ui.theme.ProfileDarkBg
 import com.example.kpappercutting.ui.theme.TagGray
 
@@ -24,6 +26,7 @@ fun ProfileScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .padding(top=12.dp)
             .background(ProfileDarkBg) // 顶部深色背景
     ) {
         // 1. 顶部个人信息区域
@@ -251,5 +254,14 @@ fun StatItem(count: String, label: String) {
             color = Color.White.copy(alpha = 0.6f),
             fontSize = 11.sp
         )
+    }
+}
+
+@Preview(showBackground = true, device = "spec:width=1080px,height=2340px,dpi=440")
+@Composable
+fun HomeScreenPreview() {
+    // 这里包裹你的主题
+    MaterialTheme {
+        ProfileScreen()
     }
 }

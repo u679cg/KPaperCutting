@@ -23,11 +23,12 @@ fun CultureScreen() {
             .background(Color(0xFFFDF8F2)) // 统一的杏色背景
             .verticalScroll(rememberScrollState())
     ) {
+        Spacer(modifier = Modifier.height(12.dp))
         // 1. 顶部红色背景标题区
         CultureHeader()
 
         // 2. 剪纸时光机卡片 (向上偏移盖住页眉)
-        Spacer(modifier = Modifier.height((-40).dp))
+//        Spacer(modifier = Modifier.height((-40).dp))
         TimeMachineCard()
 
         // 3. 剪纸基本技法部分
@@ -38,7 +39,7 @@ fun CultureScreen() {
         SectionTitle("每日剪纸科普")
         DailyKnowledgeCard()
 
-        Spacer(modifier = Modifier.height(100.dp)) // 为悬浮按钮留出空间
+        Spacer(modifier = Modifier.height(88.dp)) // 为悬浮按钮留出空间
     }
 }
 
@@ -47,7 +48,7 @@ fun CultureHeader() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(220.dp)
+            .height(200.dp)
             .background(Color(0xFF8B1A1A)) // 深红色
             .padding(start = 24.dp, top = 40.dp)
     ) {

@@ -1,12 +1,17 @@
 package com.example.kpappercutting.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsTopHeight
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -18,6 +23,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.ui.unit.dp
 import com.example.kpappercutting.ui.navigation.SteeringBottomBar
 import com.example.kpappercutting.ui.features.community.CommunityScreen
 import com.example.kpappercutting.ui.features.creation.CreateScreen
@@ -29,10 +36,10 @@ enum class Screen {
     Home, Culture, Create, Community, Profile
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppSkeleton() {
     var currentScreen by remember { mutableStateOf(Screen.Home) }
+    val showBottomBar = currentScreen != Screen.Create
 
     Box(
         modifier = Modifier
@@ -47,25 +54,52 @@ fun AppSkeleton() {
                 .align(Alignment.TopCenter)
         )
 
-        Scaffold(
+        Box(
             modifier = Modifier.fillMaxSize(),
-            containerColor = MaterialTheme.colorScheme.background,
-            bottomBar = { SteeringBottomBar(currentScreen, onSelect = { currentScreen = it }) }
-        ) { innerPadding ->
-            Box(
-                modifier = Modifier
-                    .padding(innerPadding)
-                    .fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                when (currentScreen) {
-                    Screen.Home -> HomeScreen()
-                    Screen.Culture -> CultureScreen()
-                    Screen.Create -> CreateScreen()
-                    Screen.Community -> CommunityScreen()
-                    Screen.Profile -> ProfileScreen()
+            contentAlignment = Alignment.Center
+        ) {
+            AnimatedContent(
+                targetState = currentScreen,
+                transitionSpec = {
+                    val enterTransition = if (targetState == Screen.Create) {
+                        slideInVertically(initialOffsetY = { it / 8 }) + fadeIn()
+                    } else {
+                        fadeIn()
+                    }
+                    val exitTransition = if (initialState == Screen.Create) {
+                        slideOutVertically(targetOffsetY = { it / 8 }) + fadeOut()
+                    } else {
+                        fadeOut()
+                    }
+                    enterTransition togetherWith exitTransition
+                },
+                label = "screen_transition"
+            ) { screen ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .statusBarsPadding()
+                        .padding(bottom = if (screen == Screen.Create) 0.dp else 96.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    when (screen) {
+                        Screen.Home -> HomeScreen()
+                        Screen.Culture -> CultureScreen()
+                        Screen.Create -> CreateScreen()
+                        Screen.Community -> CommunityScreen()
+                        Screen.Profile -> ProfileScreen()
+                    }
                 }
             }
+        }
+
+        AnimatedVisibility(
+            modifier = Modifier.align(Alignment.BottomCenter),
+            visible = showBottomBar,
+            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+        ) {
+            SteeringBottomBar(currentScreen, onSelect = { currentScreen = it })
         }
     }
 }
