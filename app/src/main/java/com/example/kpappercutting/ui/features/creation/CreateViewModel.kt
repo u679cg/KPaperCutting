@@ -4,96 +4,52 @@ package com.example.kpappercutting.ui.features.creation
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.geometry.Offset
 import androidx.lifecycle.ViewModel
-import com.example.kpappercutting.data.model.PaperShape
+import com.example.kpappercutting.ui.features.creation.engine.PaperCutEngine
 
 class CreateViewModel : ViewModel() {
+    val engine = PaperCutEngine()
+
     var uiState by mutableStateOf(CreateUiState())
         private set
 
-    private val redoStack = mutableListOf<DrawStroke>()
+    init {
+        syncUiState()
+    }
 
     fun onAction(action: CreateUiAction) {
         when (action) {
-            is CreateUiAction.SelectShape -> updateShape(action.shape)
-            is CreateUiAction.SelectTool -> updateTool(action.tool)
-            is CreateUiAction.SelectFoldMode -> updateFoldMode(action.mode)
-            is CreateUiAction.StartStroke -> startStroke(action.point)
-            is CreateUiAction.AppendStrokePoint -> appendStrokePoint(action.point)
-            CreateUiAction.EndStroke -> endStroke()
-            CreateUiAction.ClearCanvas -> clearCanvas()
-            CreateUiAction.Undo -> undo()
-            CreateUiAction.Redo -> redo()
+            is CreateUiAction.SelectShape -> engine.setShape(action.shape)
+            is CreateUiAction.SelectTool -> engine.setTool(action.tool)
+            is CreateUiAction.SelectFoldMode -> engine.selectFoldMode(action.mode)
+            is CreateUiAction.StartStroke -> engine.startStroke(action.point)
+            is CreateUiAction.AppendStrokePoint -> engine.appendStroke(action.point)
+            CreateUiAction.EndStroke -> engine.endStroke()
+            CreateUiAction.ToggleFold -> engine.toggleFold()
+            CreateUiAction.ClearCanvas -> engine.clearCanvas()
+            CreateUiAction.Undo -> engine.undo()
+            CreateUiAction.Redo -> engine.redo()
         }
+        syncUiState()
     }
 
-    private fun updateShape(shape: PaperShape) {
-        uiState = uiState.copy(selectedShape = shape)
+    fun resetCanvas() {
+        engine.resetAll()
+        syncUiState()
     }
 
-    private fun updateTool(tool: EditTool) {
-        uiState = uiState.copy(selectedTool = tool)
-    }
-
-    private fun updateFoldMode(mode: FoldMode) {
-        uiState = uiState.copy(selectedFoldMode = mode)
-    }
-
-    private fun startStroke(point: Offset) {
-        redoStack.clear()
-        uiState = uiState.copy(
-            currentStroke = DrawStroke(points = listOf(point)),
-            canRedo = false
-        )
-    }
-
-    private fun appendStrokePoint(point: Offset) {
-        val stroke = uiState.currentStroke ?: return
-        uiState = uiState.copy(
-            currentStroke = stroke.copy(points = stroke.points + point)
-        )
-    }
-
-    private fun endStroke() {
-        val stroke = uiState.currentStroke ?: return
-        val updatedStrokes = uiState.strokes + stroke
-        uiState = uiState.copy(
-            strokes = updatedStrokes,
-            currentStroke = null,
-            canUndo = updatedStrokes.isNotEmpty(),
-            canRedo = redoStack.isNotEmpty()
-        )
-    }
-
-    private fun clearCanvas() {
-        redoStack.clear()
-        uiState = uiState.copy(
-            strokes = emptyList(),
-            currentStroke = null,
-            canUndo = false,
-            canRedo = false
-        )
-    }
-
-    private fun undo() {
-        val lastStroke = uiState.strokes.lastOrNull() ?: return
-        redoStack += lastStroke
-        val updatedStrokes = uiState.strokes.dropLast(1)
-        uiState = uiState.copy(
-            strokes = updatedStrokes,
-            canUndo = updatedStrokes.isNotEmpty(),
-            canRedo = true
-        )
-    }
-
-    private fun redo() {
-        val restoredStroke = redoStack.removeLastOrNull() ?: return
-        val updatedStrokes = uiState.strokes + restoredStroke
-        uiState = uiState.copy(
-            strokes = updatedStrokes,
-            canUndo = true,
-            canRedo = redoStack.isNotEmpty()
+    private fun syncUiState() {
+        uiState = CreateUiState(
+            selectedShape = engine.selectedShape,
+            selectedTool = engine.selectedTool,
+            foldMode = engine.foldMode,
+            isFolded = engine.isFolded,
+            canUndo = engine.canUndo,
+            canRedo = engine.canRedo,
+            canExpand = engine.canExpand,
+            canSelectFiveFold = engine.canSelectFiveFold,
+            canSelectEightFold = engine.canSelectEightFold,
+            renderVersion = engine.renderVersion
         )
     }
 }

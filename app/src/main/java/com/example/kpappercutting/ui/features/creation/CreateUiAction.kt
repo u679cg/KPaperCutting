@@ -11,6 +11,7 @@ sealed interface CreateUiAction {
     data class StartStroke(val point: Offset) : CreateUiAction
     data class AppendStrokePoint(val point: Offset) : CreateUiAction
     data object EndStroke : CreateUiAction
+    data object ToggleFold : CreateUiAction
     data object ClearCanvas : CreateUiAction
     data object Undo : CreateUiAction
     data object Redo : CreateUiAction

@@ -12,8 +12,15 @@ fun CreateRoute(
 ) {
     CreateScreen(
         uiState = viewModel.uiState,
+        engine = viewModel.engine,
         onAction = viewModel::onAction,
-        onMenuAction = onMenuAction,
+        onMenuAction = { action ->
+            if (action == CreationMenuAction.INITIALIZE_CANVAS) {
+                viewModel.resetCanvas()
+            } else {
+                onMenuAction(action)
+            }
+        },
         onBack = onBack
     )
 }

@@ -19,10 +19,12 @@ import com.example.kpappercutting.ui.features.creation.component.CreationTopCont
 import com.example.kpappercutting.ui.features.creation.component.PaperCanvas
 import com.example.kpappercutting.ui.features.creation.component.SideActionItem
 import com.example.kpappercutting.ui.features.creation.component.SideActionPanel
+import com.example.kpappercutting.ui.features.creation.engine.PaperCutEngine
 
 @Composable
 fun CreateScreen(
     uiState: CreateUiState,
+    engine: PaperCutEngine,
     onAction: (CreateUiAction) -> Unit,
     onMenuAction: (CreationMenuAction) -> Unit = {},
     onBack: () -> Unit = {}
@@ -40,6 +42,7 @@ fun CreateScreen(
         ) {
             PaperCanvas(
                 uiState = uiState,
+                engine = engine,
                 modifier = Modifier.size(280.dp),
                 onAction = onAction
             )
@@ -70,18 +73,26 @@ fun CreateScreen(
         SideActionPanel(
             actions = listOf(
                 SideActionItem(
-                    icon = if (uiState.selectedFoldMode == FoldMode.FIVE_POINT) "⌛" else "◻️",
-                    label = "五角"
+                    icon = if (uiState.foldMode == FoldMode.FIVE_POINT) "⌛" else "◻️",
+                    label = "五角",
+                    enabled = uiState.canSelectFiveFold
                 ) {
                     onAction(CreateUiAction.SelectFoldMode(FoldMode.FIVE_POINT))
                 },
                 SideActionItem(
-                    icon = if (uiState.selectedFoldMode == FoldMode.EIGHT_POINT) "🛡️" else "◻️",
-                    label = "八角"
+                    icon = if (uiState.foldMode == FoldMode.EIGHT_POINT) "🛡️" else "◻️",
+                    label = "八角",
+                    enabled = uiState.canSelectEightFold
                 ) {
                     onAction(CreateUiAction.SelectFoldMode(FoldMode.EIGHT_POINT))
                 },
-                SideActionItem("✨", "展开")
+                SideActionItem(
+                    icon = "✨",
+                    label = if (uiState.isFolded) "展开" else "收起",
+                    enabled = uiState.canExpand
+                ) {
+                    onAction(CreateUiAction.ToggleFold)
+                }
             ),
             modifier = Modifier
                 .align(Alignment.CenterEnd)
@@ -105,6 +116,7 @@ fun CreateScreenPreview() {
                 selectedTool = EditTool.SCISSORS,
                 canUndo = true
             ),
+            engine = PaperCutEngine(),
             onAction = {},
             onMenuAction = {}
         )
