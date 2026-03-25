@@ -32,7 +32,7 @@ import androidx.compose.ui.unit.dp
 import com.example.kpappercutting.ui.navigation.CreateNavButton
 import com.example.kpappercutting.ui.navigation.SteeringBottomBar
 import com.example.kpappercutting.ui.features.community.CommunityScreen
-import com.example.kpappercutting.ui.features.creation.CreateScreen
+import com.example.kpappercutting.ui.features.creation.CreateRoute
 import com.example.kpappercutting.ui.features.culture.CultureScreen
 import com.example.kpappercutting.ui.features.home.HomeScreen
 import com.example.kpappercutting.ui.features.profile.ProfileScreen
@@ -98,7 +98,7 @@ fun AppSkeleton() {
                     when (screen) {
                         Screen.Home -> HomeScreen()
                         Screen.Culture -> CultureScreen()
-                        Screen.Create -> CreateScreen(
+                        Screen.Create -> CreateRoute(
                             onBack = { currentScreen = previousScreen }
                         )
                         Screen.Community -> CommunityScreen()
@@ -129,4 +129,3 @@ fun AppSkeleton() {
         }
     }
 }
-
