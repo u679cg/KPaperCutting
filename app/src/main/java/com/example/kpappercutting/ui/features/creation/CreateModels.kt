@@ -9,6 +9,13 @@ enum class EditTool {
     ERASER
 }
 
+enum class CreationMenuAction {
+    INITIALIZE_CANVAS,
+    SAVE_DRAFT,
+    EXPORT_TO_GALLERY,
+    PUBLISH_TO_COMMUNITY
+}
+
 enum class FoldMode {
     FIVE_POINT,
     EIGHT_POINT

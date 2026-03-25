@@ -24,6 +24,7 @@ import com.example.kpappercutting.ui.features.creation.component.SideActionPanel
 fun CreateScreen(
     uiState: CreateUiState,
     onAction: (CreateUiAction) -> Unit,
+    onMenuAction: (CreationMenuAction) -> Unit = {},
     onBack: () -> Unit = {}
 ) {
     Box(
@@ -47,6 +48,7 @@ fun CreateScreen(
         CreationTopControlBar(
             currentShape = uiState.selectedShape,
             onShapeChange = { onAction(CreateUiAction.SelectShape(it)) },
+            onMenuAction = onMenuAction,
             onBack = onBack
         )
 
@@ -103,7 +105,8 @@ fun CreateScreenPreview() {
                 selectedTool = EditTool.SCISSORS,
                 canUndo = true
             ),
-            onAction = {}
+            onAction = {},
+            onMenuAction = {}
         )
     }
 }

@@ -7,11 +7,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 @Composable
 fun CreateRoute(
     onBack: () -> Unit = {},
+    onMenuAction: (CreationMenuAction) -> Unit = {},
     viewModel: CreateViewModel = viewModel()
 ) {
     CreateScreen(
         uiState = viewModel.uiState,
         onAction = viewModel::onAction,
+        onMenuAction = onMenuAction,
         onBack = onBack
     )
 }
