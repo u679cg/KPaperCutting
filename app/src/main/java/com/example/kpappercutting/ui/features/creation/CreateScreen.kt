@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -26,11 +26,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.kpappercutting.data.model.PaperShape
-import com.example.kpappercutting.ui.features.community.CommunityScreen
 import com.example.kpappercutting.ui.theme.PaperRed
 
 @Composable
-fun CreateScreen() {
+fun CreateScreen(onBack: () -> Unit = {}) {
     // 状态管理
     var selectedShape by remember { mutableStateOf(PaperShape.CIRCLE) }
     var selectedTool by remember { mutableStateOf(EditTool.SCISSORS) }
@@ -46,12 +45,14 @@ fun CreateScreen() {
     ) {
         // --- 1. 中央画布层 ---
         Box(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .offset(y = (-96).dp),
             contentAlignment = Alignment.Center
         ) {
             Canvas(
                 modifier = Modifier
-                    .size(320.dp) // 纸张大小
+                    .size(280.dp) // 纸张大小
                     .pointerInput(selectedTool) {
                         detectDragGestures(
                             onDragStart = { offset ->
@@ -87,15 +88,16 @@ fun CreateScreen() {
         // --- 2. 顶部工具栏 ---
         TopControlBar(
             currentShape = selectedShape,
-            onShapeChange = { selectedShape = it }
+            onShapeChange = { selectedShape = it },
+            onBack = onBack
         )
 
         // --- 3. 左侧操作栏 (清空、撤销、恢复) ---
         Column(
             modifier = Modifier
                 .align(Alignment.CenterStart)
-                .padding(start = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+                .padding(start = 16.dp, top = 144.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)//按钮间距
         ) {
             SideButton("🗑️", "清空") { paths.clear() }
             SideButton("↩️", "撤销") { paths.removeLastOrNull()}
@@ -106,8 +108,8 @@ fun CreateScreen() {
         Column(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .padding(end = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+                .padding(end = 16.dp, top = 144.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             SideButton("⌛", "五角")
             SideButton("🛡️", "八角")
@@ -123,19 +125,32 @@ fun CreateScreen() {
 }
 
 @Composable
-fun TopControlBar(currentShape: PaperShape, onShapeChange: (PaperShape) -> Unit) {
+fun TopControlBar(
+    currentShape: PaperShape,
+    onShapeChange: (PaperShape) -> Unit,
+    onBack: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp,0.dp),
+            .padding(16.dp,12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(Icons.Default.Home, contentDescription = null, tint = Color(0xFF5D4037))
+        IconButton(onClick = onBack) {
+            Icon(
+                Icons.Default.ArrowBack,
+                contentDescription = "Back",
+                tint = Color(0xFF5D4037)
+            )
+        }
 
         // 圆形/方形 切换器
         Surface(
-            modifier = Modifier.height(40.dp).width(180.dp),
+            modifier = Modifier
+                .height(40.dp)
+                .width(180.dp)
+                .shadow(4.dp,RoundedCornerShape(20.dp)),
             shape = RoundedCornerShape(20.dp),
             color = Color.White.copy(alpha = 0.6f)
         ) {

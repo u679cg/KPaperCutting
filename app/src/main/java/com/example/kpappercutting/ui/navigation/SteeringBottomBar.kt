@@ -94,25 +94,28 @@ fun SteeringBottomBar(current: Screen, onSelect: (Screen) -> Unit) {
                 selected = current == Screen.Profile,
                 onClick = { onSelect(Screen.Profile) })
         }
+    }
+}
 
-        // 中间大按钮 - 舵盘样式
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .offset(y = (-32).dp) // pull up to overlap
-                .size(72.dp)
-                .shadow(8.dp, shape = CircleShape)
-                .background(color = colorResource(id = R.color.primary), shape = CircleShape)
-                .clickable { onSelect(Screen.Create) },
-            contentAlignment = Alignment.Center
-        ){
-            Icon(
-                painter = painterResource(id = R.drawable.ic_create),
-                contentDescription = "Create",
-                tint = Color.White,
-                modifier = Modifier.size(36.dp)
-            )
-        }
+@Composable
+fun CreateNavButton(
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .size(72.dp)
+            .shadow(8.dp, shape = CircleShape)
+            .background(color = colorResource(id = R.color.primary), shape = CircleShape)
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            painter = painterResource(id = R.drawable.ic_create),
+            contentDescription = "Create",
+            tint = Color.White,
+            modifier = Modifier.size(36.dp)
+        )
     }
 }
 

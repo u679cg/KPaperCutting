@@ -4,11 +4,14 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.material3.MaterialTheme
@@ -24,7 +27,9 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.ui.unit.dp
+import com.example.kpappercutting.ui.navigation.CreateNavButton
 import com.example.kpappercutting.ui.navigation.SteeringBottomBar
 import com.example.kpappercutting.ui.features.community.CommunityScreen
 import com.example.kpappercutting.ui.features.creation.CreateScreen
@@ -39,7 +44,15 @@ enum class Screen {
 @Composable
 fun AppSkeleton() {
     var currentScreen by remember { mutableStateOf(Screen.Home) }
+    var previousScreen by remember { mutableStateOf(Screen.Home) }
     val showBottomBar = currentScreen != Screen.Create
+
+    fun navigateTo(screen: Screen) {
+        if (screen == Screen.Create && currentScreen != Screen.Create) {
+            previousScreen = currentScreen
+        }
+        currentScreen = screen
+    }
 
     Box(
         modifier = Modifier
@@ -85,7 +98,9 @@ fun AppSkeleton() {
                     when (screen) {
                         Screen.Home -> HomeScreen()
                         Screen.Culture -> CultureScreen()
-                        Screen.Create -> CreateScreen()
+                        Screen.Create -> CreateScreen(
+                            onBack = { currentScreen = previousScreen }
+                        )
                         Screen.Community -> CommunityScreen()
                         Screen.Profile -> ProfileScreen()
                     }
@@ -99,7 +114,18 @@ fun AppSkeleton() {
             enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
             exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
         ) {
-            SteeringBottomBar(currentScreen, onSelect = { currentScreen = it })
+            SteeringBottomBar(currentScreen, onSelect = ::navigateTo)
+        }
+
+        AnimatedVisibility(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .offset(y = (-44).dp),
+            visible = showBottomBar,
+            enter = fadeIn() + scaleIn(initialScale = 0.85f) + slideInVertically(initialOffsetY = { it / 3 }),
+            exit = fadeOut() + scaleOut(targetScale = 0.85f) + slideOutVertically(targetOffsetY = { it / 3 })
+        ) {
+            CreateNavButton(onClick = { navigateTo(Screen.Create) })
         }
     }
 }
