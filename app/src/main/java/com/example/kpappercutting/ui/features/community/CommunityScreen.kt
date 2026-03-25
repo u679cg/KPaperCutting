@@ -14,8 +14,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.kpappercutting.ui.features.home.HomeScreen
 
 @Composable
 fun CommunityScreen() {
@@ -40,15 +42,13 @@ fun CommunityScreen() {
                     TabRowDefaults.SecondaryIndicator(
                         modifier = Modifier
                             .tabIndicatorOffset(tabPositions[selectedTabIndex])
-                            .padding(horizontal = 40.dp), // 让指示器比文字短一点
+                            .padding(horizontal = 60.dp), // 让指示器比文字短一点
                         color = Color(0xFFB02621),
                         height = 3.dp
                     )
                 }
             },
             modifier = Modifier
-                .statusBarsPadding() // 避开系统状态栏
-                .padding(top = 10.dp)
         ) {
             titles.forEachIndexed { index, title ->
                 Tab(
@@ -167,5 +167,15 @@ fun InteractionButton(text: String) {
 fun MarketPlaceholder() {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Text(text = "云市板块开发中...", color = Color.Gray)
+    }
+}
+
+
+@Preview(showBackground = true, device = "spec:width=1080px,height=2340px,dpi=440")
+@Composable
+fun HomeScreenPreview() {
+    // 这里包裹你的主题
+    MaterialTheme {
+        CommunityScreen()
     }
 }

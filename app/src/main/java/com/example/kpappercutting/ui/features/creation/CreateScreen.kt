@@ -22,9 +22,11 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.kpappercutting.data.model.PaperShape
+import com.example.kpappercutting.ui.features.community.CommunityScreen
 import com.example.kpappercutting.ui.theme.PaperRed
 
 @Composable
@@ -125,7 +127,6 @@ fun TopControlBar(currentShape: PaperShape, onShapeChange: (PaperShape) -> Unit)
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .statusBarsPadding()
             .padding(16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
@@ -225,6 +226,15 @@ fun ToolItem(icon: String, label: String, isActive: Boolean, onClick: () -> Unit
             Text(icon, fontSize = 24.sp)
         }
         Text(label, fontSize = 10.sp, color = if(isActive) PaperRed else Color.Gray)
+    }
+}
+
+@Preview(showBackground = true, device = "spec:width=1080px,height=2340px,dpi=440")
+@Composable
+fun HomeScreenPreview() {
+    // 这里包裹你的主题
+    MaterialTheme {
+        CreateScreen()
     }
 }
 
