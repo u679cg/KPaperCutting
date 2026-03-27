@@ -29,7 +29,7 @@ fun PaperCanvas(
             .onSizeChanged { size ->
                 engine.attachSize(size.width, size.height)
             }
-            .pointerInput(uiState.selectedTool, uiState.renderVersion) {
+            .pointerInput(uiState.selectedTool) {
                 detectDragGestures(
                     onDragStart = { offset ->
                         onAction(CreateUiAction.StartStroke(offset))

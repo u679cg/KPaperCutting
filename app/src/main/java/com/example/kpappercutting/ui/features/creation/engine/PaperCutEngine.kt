@@ -11,6 +11,7 @@ import android.graphics.Path
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
 import android.graphics.RectF
+import android.graphics.Region
 import androidx.compose.ui.geometry.Offset
 import com.example.kpappercutting.data.model.PaperShape
 import com.example.kpappercutting.ui.features.creation.EditTool
@@ -72,6 +73,7 @@ class PaperCutEngine {
     private var centerY: Float = 0f
     private var radius: Float = 0f
     private val paperBounds = RectF()
+    private var paperRegion = Region()
 
     private var mainPath = Path()
     private var drawingPath = Path()
@@ -83,7 +85,9 @@ class PaperCutEngine {
 
     private var lastTouchX = 0f
     private var lastTouchY = 0f
+    private var strokeActive = false
     private var renderVersionInternal = 0
+    private var loadedBitmap: Bitmap? = null
 
     var selectedShape: PaperShape = PaperShape.CIRCLE
         private set
@@ -122,6 +126,7 @@ class PaperCutEngine {
         centerY = height / 2f
         radius = minOf(width, height) / 2f * 0.85f
         paperBounds.set(centerX - radius, centerY - radius, centerX + radius, centerY + radius)
+        paperRegion = Region(0, 0, width, height)
 
         sketchBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         sketchCanvas = Canvas(sketchBitmap!!)
@@ -148,7 +153,22 @@ class PaperCutEngine {
         selectedShape = PaperShape.CIRCLE
         foldMode = FoldMode.NONE
         isFolded = false
+        loadedBitmap = null
         rebuildPaperPath(clearSketch = true, resetHistory = true)
+    }
+
+    fun loadBitmap(bitmap: Bitmap?) {
+        loadedBitmap = bitmap
+        bumpRenderVersion()
+    }
+
+    fun getBitmap(): Bitmap? {
+        if (canvasWidth <= 0 || canvasHeight <= 0) return null
+        val output = Bitmap.createBitmap(canvasWidth, canvasHeight, Bitmap.Config.ARGB_8888)
+        val outputCanvas = Canvas(output)
+        drawPaperContent(outputCanvas, mainPath)
+        sketchBitmap?.let { outputCanvas.drawBitmap(it, 0f, 0f, null) }
+        return output
     }
 
     fun selectFoldMode(mode: FoldMode) {
@@ -178,6 +198,11 @@ class PaperCutEngine {
 
     fun startStroke(point: Offset) {
         if (canvasWidth == 0 || canvasHeight == 0) return
+        if (!isPointInsideCanvas(point)) {
+            strokeActive = false
+            return
+        }
+        strokeActive = true
         if (selectedTool == EditTool.PENCIL || selectedTool == EditTool.ERASER) {
             saveSnapshot()
         }
@@ -189,6 +214,7 @@ class PaperCutEngine {
     }
 
     fun appendStroke(point: Offset) {
+        if (!strokeActive) return
         val midX = (lastTouchX + point.x) / 2f
         val midY = (lastTouchY + point.y) / 2f
         drawingPath.quadTo(lastTouchX, lastTouchY, midX, midY)
@@ -203,6 +229,7 @@ class PaperCutEngine {
     }
 
     fun endStroke() {
+        if (!strokeActive) return
         if (drawingPath.isEmpty) return
         when (selectedTool) {
             EditTool.SCISSORS -> {
@@ -214,15 +241,14 @@ class PaperCutEngine {
             }
             EditTool.PENCIL, EditTool.ERASER -> applySketch()
         }
+        strokeActive = false
         drawingPath.reset()
         bumpRenderVersion()
     }
 
     fun undo() {
         if (undoStack.size <= 1) return
-//        val current = undoStack.removeLast()
         val current = undoStack.removeAt(undoStack.lastIndex)
-//        val current =undoStack.removeLastOrNull()
         redoStack += current
         restoreSnapshot(undoStack.last())
         bumpRenderVersion()
@@ -240,7 +266,7 @@ class PaperCutEngine {
 
     fun render(canvas: Canvas) {
         if (canvasWidth == 0 || canvasHeight == 0) return
-        canvas.drawPath(mainPath, paperPaint)
+        drawPaperContent(canvas, mainPath)
         sketchBitmap?.let { canvas.drawBitmap(it, 0f, 0f, null) }
         if (!drawingPath.isEmpty) {
             when (selectedTool) {
@@ -262,6 +288,7 @@ class PaperCutEngine {
         if (clearSketch) {
             sketchBitmap?.eraseColor(Color.TRANSPARENT)
         }
+        strokeActive = false
 
         if (foldMode != FoldMode.NONE && isFolded) {
             val wedgeAngle = getFoldSweepAngle()
@@ -281,6 +308,7 @@ class PaperCutEngine {
             redoStack.clear()
             saveSnapshot()
         }
+        updatePaperRegion()
         bumpRenderVersion()
     }
 
@@ -396,7 +424,35 @@ class PaperCutEngine {
             Bitmap.Config.ARGB_8888
         )
         sketchCanvas = Canvas(sketchBitmap!!)
+        strokeActive = false
         drawingPath.reset()
+        updatePaperRegion()
+    }
+
+    private fun drawPaperContent(canvas: Canvas, path: Path) {
+        canvas.save()
+        canvas.drawPath(path, paperPaint)
+        loadedBitmap?.let { bitmap ->
+            canvas.clipPath(path)
+            canvas.drawBitmap(bitmap, null, paperBounds, null)
+        }
+        canvas.restore()
+    }
+
+    private fun isPointInsideCanvas(point: Offset): Boolean {
+        if (canvasWidth <= 0 || canvasHeight <= 0) return false
+        return point.x in 0f..canvasWidth.toFloat() && point.y in 0f..canvasHeight.toFloat()
+    }
+
+    private fun updatePaperRegion() {
+        if (canvasWidth <= 0 || canvasHeight <= 0) {
+            paperRegion = Region()
+            return
+        }
+        val clipRegion = Region(0, 0, canvasWidth, canvasHeight)
+        paperRegion = Region().apply {
+            setPath(mainPath, clipRegion)
+        }
     }
 
     private fun getFoldSweepAngle(): Float = when (foldMode) {
