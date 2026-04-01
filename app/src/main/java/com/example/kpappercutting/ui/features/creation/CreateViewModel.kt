@@ -24,6 +24,11 @@ class CreateViewModel : ViewModel() {
             is CreateUiAction.SelectFoldMode -> engine.selectFoldMode(action.mode)
             is CreateUiAction.StartStroke -> engine.startStroke(action.point)
             is CreateUiAction.AppendStrokePoint -> engine.appendStroke(action.point)
+            is CreateUiAction.TransformCanvas -> engine.transform(
+                centroid = action.centroid,
+                pan = action.pan,
+                zoom = action.zoom
+            )
             CreateUiAction.EndStroke -> engine.endStroke()
             CreateUiAction.ToggleFold -> engine.toggleFold()
             CreateUiAction.ClearCanvas -> engine.clearCanvas()

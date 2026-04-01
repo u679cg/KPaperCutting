@@ -2,6 +2,7 @@
 package com.example.kpappercutting.ui.features.creation.component
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -28,6 +29,18 @@ fun PaperCanvas(
         modifier = modifier
             .onSizeChanged { size ->
                 engine.attachSize(size.width, size.height)
+            }
+            .pointerInput(Unit) {
+                detectTransformGestures { centroid, pan, zoom, _ ->
+                    onAction(CreateUiAction.EndStroke)
+                    onAction(
+                        CreateUiAction.TransformCanvas(
+                            centroid = centroid,
+                            pan = pan,
+                            zoom = zoom
+                        )
+                    )
+                }
             }
             .pointerInput(uiState.selectedTool) {
                 detectDragGestures(

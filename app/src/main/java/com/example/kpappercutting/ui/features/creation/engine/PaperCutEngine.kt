@@ -74,6 +74,9 @@ class PaperCutEngine {
     private var radius: Float = 0f
     private val paperBounds = RectF()
     private var paperRegion = Region()
+    private val transformMatrix = Matrix()
+    private val inverseMatrix = Matrix()
+    private val matrixValues = FloatArray(9)
 
     private var mainPath = Path()
     private var drawingPath = Path()
@@ -127,6 +130,7 @@ class PaperCutEngine {
         radius = minOf(width, height) / 2f * 0.85f
         paperBounds.set(centerX - radius, centerY - radius, centerX + radius, centerY + radius)
         paperRegion = Region(0, 0, width, height)
+        resetTransform()
 
         sketchBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         sketchCanvas = Canvas(sketchBitmap!!)
@@ -146,6 +150,7 @@ class PaperCutEngine {
 
     fun clearCanvas() {
         rebuildPaperPath(clearSketch = true, resetHistory = true)
+        resetTransform()
     }
 
     fun resetAll() {
@@ -155,6 +160,7 @@ class PaperCutEngine {
         isFolded = false
         loadedBitmap = null
         rebuildPaperPath(clearSketch = true, resetHistory = true)
+        resetTransform()
     }
 
     fun loadBitmap(bitmap: Bitmap?) {
@@ -178,9 +184,11 @@ class PaperCutEngine {
                 foldMode = mode
                 isFolded = true
                 rebuildPaperPath(clearSketch = true, resetHistory = true)
+                resetTransform()
             }
             foldMode == mode && !isFolded -> {
                 foldLogic()
+                resetTransform()
                 bumpRenderVersion()
             }
         }
@@ -193,12 +201,14 @@ class PaperCutEngine {
         } else {
             foldLogic()
         }
+        resetTransform()
         bumpRenderVersion()
     }
 
     fun startStroke(point: Offset) {
         if (canvasWidth == 0 || canvasHeight == 0) return
-        if (!isPointInsideCanvas(point)) {
+        val mappedPoint = mapPointToCanvas(point)
+        if (!isPointInsideCanvas(mappedPoint)) {
             strokeActive = false
             return
         }
@@ -207,24 +217,25 @@ class PaperCutEngine {
             saveSnapshot()
         }
         drawingPath.reset()
-        drawingPath.moveTo(point.x, point.y)
-        lastTouchX = point.x
-        lastTouchY = point.y
+        drawingPath.moveTo(mappedPoint.x, mappedPoint.y)
+        lastTouchX = mappedPoint.x
+        lastTouchY = mappedPoint.y
         bumpRenderVersion()
     }
 
     fun appendStroke(point: Offset) {
         if (!strokeActive) return
-        val midX = (lastTouchX + point.x) / 2f
-        val midY = (lastTouchY + point.y) / 2f
+        val mappedPoint = mapPointToCanvas(point)
+        val midX = (lastTouchX + mappedPoint.x) / 2f
+        val midY = (lastTouchY + mappedPoint.y) / 2f
         drawingPath.quadTo(lastTouchX, lastTouchY, midX, midY)
         if (selectedTool == EditTool.PENCIL || selectedTool == EditTool.ERASER) {
             applySketch()
             drawingPath.reset()
             drawingPath.moveTo(midX, midY)
         }
-        lastTouchX = point.x
-        lastTouchY = point.y
+        lastTouchX = mappedPoint.x
+        lastTouchY = mappedPoint.y
         bumpRenderVersion()
     }
 
@@ -243,6 +254,27 @@ class PaperCutEngine {
         }
         strokeActive = false
         drawingPath.reset()
+        bumpRenderVersion()
+    }
+
+    fun transform(centroid: Offset, pan: Offset, zoom: Float) {
+        if (canvasWidth == 0 || canvasHeight == 0) return
+        if (strokeActive) {
+            endStroke()
+        }
+
+        transformMatrix.getValues(matrixValues)
+        val currentScale = matrixValues[Matrix.MSCALE_X]
+        var clampedZoom = zoom
+        if (currentScale * clampedZoom < 0.5f) {
+            clampedZoom = 0.5f / currentScale
+        }
+        if (currentScale * clampedZoom > 5f) {
+            clampedZoom = 5f / currentScale
+        }
+
+        transformMatrix.postTranslate(pan.x, pan.y)
+        transformMatrix.postScale(clampedZoom, clampedZoom, centroid.x, centroid.y)
         bumpRenderVersion()
     }
 
@@ -266,6 +298,8 @@ class PaperCutEngine {
 
     fun render(canvas: Canvas) {
         if (canvasWidth == 0 || canvasHeight == 0) return
+        canvas.save()
+        canvas.concat(transformMatrix)
         drawPaperContent(canvas, mainPath)
         sketchBitmap?.let { canvas.drawBitmap(it, 0f, 0f, null) }
         if (!drawingPath.isEmpty) {
@@ -278,6 +312,7 @@ class PaperCutEngine {
                 EditTool.ERASER -> canvas.drawPath(drawingPath, eraserPreviewPaint)
             }
         }
+        canvas.restore()
     }
 
     private fun rebuildPaperPath(clearSketch: Boolean, resetHistory: Boolean) {
@@ -442,6 +477,19 @@ class PaperCutEngine {
     private fun isPointInsideCanvas(point: Offset): Boolean {
         if (canvasWidth <= 0 || canvasHeight <= 0) return false
         return point.x in 0f..canvasWidth.toFloat() && point.y in 0f..canvasHeight.toFloat()
+    }
+
+    private fun mapPointToCanvas(point: Offset): Offset {
+        val values = floatArrayOf(point.x, point.y)
+        transformMatrix.invert(inverseMatrix)
+        inverseMatrix.mapPoints(values)
+        return Offset(values[0], values[1])
+    }
+
+    private fun resetTransform() {
+        if (canvasWidth <= 0 || canvasHeight <= 0) return
+        transformMatrix.reset()
+        transformMatrix.postScale(0.65f, 0.65f, centerX, centerY)
     }
 
     private fun updatePaperRegion() {

@@ -2,11 +2,8 @@ package com.example.kpappercutting.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
-
 val PaperRed = Color(0xFFB02621) // 剪纸红
+val CreamYellow =Color(0xFFF2EBDD)//奶黄色
 val BackgroundCream = Color(0xFFFDF8F2) // 杏色背景
 val SearchBarBg = Color(0xFFF3E9DD) // 搜索栏背景
 

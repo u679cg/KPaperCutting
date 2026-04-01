@@ -21,7 +21,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.kpappercutting.R
 import com.example.kpappercutting.ui.theme.BackgroundCream
+import com.example.kpappercutting.ui.theme.CreamYellow
 import com.example.kpappercutting.ui.theme.PaperRed
 
 @Composable
@@ -121,7 +123,7 @@ fun TopSearchBar() {
 
         // 右侧通知图标
         Icon(
-            imageVector = Icons.Default.Notifications,
+            painter = painterResource(id = R.drawable.ic_notification),
             contentDescription = null,
             modifier = Modifier.size(28.dp),
             tint = Color(0xFF444444)
@@ -134,40 +136,21 @@ fun PromotionCard() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(180.dp)
+            .height(140.dp)
             .clip(RoundedCornerShape(20.dp))
-            .background(PaperRed) // 主色调红
-            .padding(24.dp)
+            .background(CreamYellow) // 主色调红
+//            .padding(24.dp)
     ) {
-        // 背景装饰圆（模拟图中右侧的暗色圆圈）
-        Box(
+        //bannner
+        Image(
+            painter = painterResource(id = R.drawable.banner_1),
+            contentDescription = null,
             modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .offset(x = 40.dp)
-                .size(150.dp)
-                .background(Color.Black.copy(alpha = 0.05f), shape = RoundedCornerShape(75.dp))
+                .fillMaxHeight()
+                .align(Alignment.Center),
+            contentScale = ContentScale.FillHeight
         )
 
-        Column {
-            Text(
-                text = "非遗剪纸",
-                color = Color.White,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "正在新生",
-                color = Color.White,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = "每日一剪 · 每日灵感推荐",
-                color = Color.White.copy(alpha = 0.8f),
-                fontSize = 14.sp
-            )
-        }
     }
 }
 

@@ -10,6 +10,11 @@ sealed interface CreateUiAction {
     data class SelectFoldMode(val mode: FoldMode) : CreateUiAction
     data class StartStroke(val point: Offset) : CreateUiAction
     data class AppendStrokePoint(val point: Offset) : CreateUiAction
+    data class TransformCanvas(
+        val centroid: Offset,
+        val pan: Offset,
+        val zoom: Float
+    ) : CreateUiAction
     data object EndStroke : CreateUiAction
     data object ToggleFold : CreateUiAction
     data object ClearCanvas : CreateUiAction
