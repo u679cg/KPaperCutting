@@ -2,12 +2,15 @@
 package com.example.kpappercutting.ui.features.creation.component
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTransformGestures
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
+import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import com.example.kpappercutting.ui.features.creation.CreateUiAction
@@ -43,21 +46,41 @@ fun PaperCanvas(
                 }
             }
             .pointerInput(uiState.selectedTool) {
-                detectDragGestures(
-                    onDragStart = { offset ->
-                        onAction(CreateUiAction.StartStroke(offset))
-                    },
-                    onDrag = { change, _ ->
-                        change.consume()
-                        onAction(CreateUiAction.AppendStrokePoint(change.position))
-                    },
-                    onDragEnd = {
-                        onAction(CreateUiAction.EndStroke)
-                    },
-                    onDragCancel = {
-                        onAction(CreateUiAction.EndStroke)
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    var strokeStarted = true
+                    onAction(CreateUiAction.StartStroke(down.position))
+
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val pressedCount = event.changes.count { it.pressed }
+
+                        if (pressedCount > 1) {
+                            if (strokeStarted) {
+                                onAction(CreateUiAction.EndStroke)
+                            }
+                            break
+                        }
+
+                        val activeChange = event.changes.firstOrNull { it.id == down.id }
+                            ?: event.changes.firstOrNull()
+                            ?: break
+
+                        if (activeChange.changedToUpIgnoreConsumed()) {
+                            if (strokeStarted) {
+                                onAction(CreateUiAction.EndStroke)
+                            }
+                            break
+                        }
+
+                        if (!activeChange.positionChanged()) {
+                            continue
+                        }
+
+                        activeChange.consume()
+                        onAction(CreateUiAction.AppendStrokePoint(activeChange.position))
                     }
-                )
+                }
             }
     ) {
         renderVersion

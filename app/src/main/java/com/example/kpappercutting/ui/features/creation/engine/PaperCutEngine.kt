@@ -16,6 +16,7 @@ import androidx.compose.ui.geometry.Offset
 import com.example.kpappercutting.data.model.PaperShape
 import com.example.kpappercutting.ui.features.creation.EditTool
 import com.example.kpappercutting.ui.features.creation.FoldMode
+import kotlin.math.roundToInt
 
 class PaperCutEngine {
     private data class Snapshot(
@@ -89,6 +90,7 @@ class PaperCutEngine {
     private var lastTouchX = 0f
     private var lastTouchY = 0f
     private var strokeActive = false
+    private var strokePendingEntry = false
     private var renderVersionInternal = 0
     private var loadedBitmap: Bitmap? = null
 
@@ -210,22 +212,49 @@ class PaperCutEngine {
         val mappedPoint = mapPointToCanvas(point)
         if (!isPointInsideCanvas(mappedPoint)) {
             strokeActive = false
+            strokePendingEntry = false
             return
         }
         strokeActive = true
-        if (selectedTool == EditTool.PENCIL || selectedTool == EditTool.ERASER) {
-            saveSnapshot()
-        }
+        strokePendingEntry = !canStartStrokeOnPaper(mappedPoint)
         drawingPath.reset()
-        drawingPath.moveTo(mappedPoint.x, mappedPoint.y)
         lastTouchX = mappedPoint.x
         lastTouchY = mappedPoint.y
+        if (!strokePendingEntry) {
+            beginStrokeAt(mappedPoint)
+        }
         bumpRenderVersion()
     }
 
     fun appendStroke(point: Offset) {
         if (!strokeActive) return
         val mappedPoint = mapPointToCanvas(point)
+        if (!isPointInsideCanvas(mappedPoint)) {
+            lastTouchX = mappedPoint.x
+            lastTouchY = mappedPoint.y
+            return
+        }
+
+        if (strokePendingEntry) {
+            if (!canStartStrokeOnPaper(mappedPoint)) {
+                lastTouchX = mappedPoint.x
+                lastTouchY = mappedPoint.y
+                return
+            }
+            val entryPoint = findStrokeEntryPoint(
+                from = Offset(lastTouchX, lastTouchY),
+                to = mappedPoint
+            )
+            beginStrokeAt(entryPoint)
+            if (entryPoint != mappedPoint) {
+                drawingPath.lineTo(mappedPoint.x, mappedPoint.y)
+            }
+            lastTouchX = mappedPoint.x
+            lastTouchY = mappedPoint.y
+            bumpRenderVersion()
+            return
+        }
+
         val midX = (lastTouchX + mappedPoint.x) / 2f
         val midY = (lastTouchY + mappedPoint.y) / 2f
         drawingPath.quadTo(lastTouchX, lastTouchY, midX, midY)
@@ -241,7 +270,20 @@ class PaperCutEngine {
 
     fun endStroke() {
         if (!strokeActive) return
-        if (drawingPath.isEmpty) return
+        if (strokePendingEntry) {
+            strokeActive = false
+            strokePendingEntry = false
+            drawingPath.reset()
+            bumpRenderVersion()
+            return
+        }
+        if (drawingPath.isEmpty) {
+            strokeActive = false
+            strokePendingEntry = false
+            drawingPath.reset()
+            bumpRenderVersion()
+            return
+        }
         when (selectedTool) {
             EditTool.SCISSORS -> {
                 if (!drawingPath.isEmpty) {
@@ -253,6 +295,7 @@ class PaperCutEngine {
             EditTool.PENCIL, EditTool.ERASER -> applySketch()
         }
         strokeActive = false
+        strokePendingEntry = false
         drawingPath.reset()
         bumpRenderVersion()
     }
@@ -324,6 +367,7 @@ class PaperCutEngine {
             sketchBitmap?.eraseColor(Color.TRANSPARENT)
         }
         strokeActive = false
+        strokePendingEntry = false
 
         if (foldMode != FoldMode.NONE && isFolded) {
             val wedgeAngle = getFoldSweepAngle()
@@ -460,6 +504,7 @@ class PaperCutEngine {
         )
         sketchCanvas = Canvas(sketchBitmap!!)
         strokeActive = false
+        strokePendingEntry = false
         drawingPath.reset()
         updatePaperRegion()
     }
@@ -477,6 +522,70 @@ class PaperCutEngine {
     private fun isPointInsideCanvas(point: Offset): Boolean {
         if (canvasWidth <= 0 || canvasHeight <= 0) return false
         return point.x in 0f..canvasWidth.toFloat() && point.y in 0f..canvasHeight.toFloat()
+    }
+
+    private fun beginStrokeAt(point: Offset) {
+        strokePendingEntry = false
+        if (selectedTool == EditTool.PENCIL || selectedTool == EditTool.ERASER) {
+            saveSnapshot()
+        }
+        drawingPath.reset()
+        drawingPath.moveTo(point.x, point.y)
+    }
+
+    private fun canStartStrokeOnPaper(point: Offset): Boolean {
+        return isPointOnPaper(point, tolerance = 14f)
+    }
+
+    private fun findStrokeEntryPoint(from: Offset, to: Offset): Offset {
+        if (isPointOnPaper(from, tolerance = 0f)) {
+            return from
+        }
+        if (!isPointOnPaper(to, tolerance = 0f)) {
+            return to
+        }
+
+        var low = 0f
+        var high = 1f
+        repeat(16) {
+            val mid = (low + high) / 2f
+            val candidate = lerp(from, to, mid)
+            if (isPointOnPaper(candidate, tolerance = 0f)) {
+                high = mid
+            } else {
+                low = mid
+            }
+        }
+        return lerp(from, to, high)
+    }
+
+    private fun isPointOnPaper(point: Offset, tolerance: Float = 0f): Boolean {
+        val roundedX = point.x.roundToInt()
+        val roundedY = point.y.roundToInt()
+        if (paperRegion.contains(roundedX, roundedY)) {
+            return true
+        }
+        if (tolerance <= 0f) {
+            return false
+        }
+
+        val toleranceInt = tolerance.roundToInt()
+        for (dx in -toleranceInt..toleranceInt) {
+            for (dy in -toleranceInt..toleranceInt) {
+                if (dx * dx + dy * dy > toleranceInt * toleranceInt) continue
+                if (paperRegion.contains(roundedX + dx, roundedY + dy)) {
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    private fun lerp(start: Offset, end: Offset, fraction: Float): Offset {
+        return Offset(
+            x = start.x + (end.x - start.x) * fraction,
+            y = start.y + (end.y - start.y) * fraction
+        )
     }
 
     private fun mapPointToCanvas(point: Offset): Offset {
