@@ -7,7 +7,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -24,7 +23,7 @@ import androidx.compose.ui.unit.sp
 import com.example.kpappercutting.R
 import com.example.kpappercutting.ui.theme.BackgroundCream
 import com.example.kpappercutting.ui.theme.CreamYellow
-import com.example.kpappercutting.ui.theme.PaperRed
+import com.example.kpappercutting.ui.theme.PanmenFontFamily
 
 @Composable
 fun HomeScreen() {
@@ -78,6 +77,7 @@ fun TopSearchBar() {
                 text = "指尖",
                 color = Color(0xFFB02621),
                 fontSize = 18.sp,
+                fontFamily = PanmenFontFamily,
                 fontWeight = FontWeight.Bold,
                 lineHeight = 18.sp
             )
@@ -85,6 +85,7 @@ fun TopSearchBar() {
                 text = "生花",
                 color = Color(0xFFB02621),
                 fontSize = 18.sp,
+                fontFamily = PanmenFontFamily,
                 fontWeight = FontWeight.Bold,
                 lineHeight = 18.sp
             )
@@ -160,33 +161,41 @@ fun QuickActionGrid() {
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        ActionItem("玩真剪纸", "icon_scissors") // 这里的字符串是占位符
-        ActionItem("友邻情偶", "icon_stars")
-        ActionItem("文化学习", "icon_book")
-        ActionItem("每日签到", "icon_check")
+        ActionItem("闯关", "ic_game") // 这里的字符串是占位符
+        ActionItem("妙想", "ic_greatthink")
+        ActionItem("科普", "ic_popscience")
+        ActionItem("挑战", "ic_challenge")
     }
 }
 
 @Composable
 fun ActionItem(label: String, iconPlaceholder: String) {
+    val iconRes = when (iconPlaceholder) {
+        "ic_game" -> R.drawable.ic_game
+        "ic_greatthink" -> R.drawable.ic_greatthink
+        "ic_popscience" -> R.drawable.ic_popscience
+        "ic_challenge" -> R.drawable.ic_challenge
+        else -> R.drawable.ic_game
+    }
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Surface(
-            modifier = Modifier.size(65.dp),
-            color = Color.White,
+            modifier = Modifier.size(48.dp),
+            color = Color.Transparent,
             shape = RoundedCornerShape(16.dp),
-            shadowElevation = 2.dp
+//            shadowElevation = 0.dp
         ) {
             Box(contentAlignment = Alignment.Center) {
-                // 占位图标：后续用 Image(painterResource(id = R.drawable.xxx)...) 替换
-                Box(
+                Image(
+                    painter = painterResource(id = iconRes),
+                    contentDescription = label,
                     modifier = Modifier
-                        .size(32.dp)
-                        .background(PaperRed.copy(alpha = 0.1f)) // 临时占位背景
-                ) {
-                    Text(text = "🎨", modifier = Modifier.align(Alignment.Center)) // 临时用 Emoji 代替
-                }
+                        .size(48.dp)
+                        .align(Alignment.Center),
+                    contentScale = ContentScale.Fit
+                )
             }
         }
         Spacer(modifier = Modifier.height(8.dp))

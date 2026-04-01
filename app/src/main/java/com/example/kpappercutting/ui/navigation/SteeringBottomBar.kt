@@ -1,6 +1,7 @@
 package com.example.kpappercutting.ui.navigation
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,13 +36,14 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.material3.MaterialTheme
 import com.example.kpappercutting.R
+import com.example.kpappercutting.ui.theme.CreamYellow
 import com.example.kpappercutting.ui.theme.KPappercuttingTheme
 
 
 @Composable
 fun SteeringBottomBar(current: Screen, onSelect: (Screen) -> Unit) {
     // visual dimensions
-    val barHeight: Dp = 68.dp
+    val barHeight: Dp = 58.dp
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -66,7 +68,7 @@ fun SteeringBottomBar(current: Screen, onSelect: (Screen) -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(barHeight)
-                .padding(horizontal = 24.dp),
+                .padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -104,8 +106,9 @@ fun CreateNavButton(
 ) {
     Box(
         modifier = modifier
-            .size(72.dp)
-            .shadow(8.dp, shape = CircleShape)
+            .size(62.dp)
+            .border(4.dp,CreamYellow,CircleShape)
+            .shadow(8.dp, CircleShape)
             .background(color = colorResource(id = R.color.primary), shape = CircleShape)
             .clickable { onClick() },
         contentAlignment = Alignment.Center
@@ -114,7 +117,7 @@ fun CreateNavButton(
             painter = painterResource(id = R.drawable.ic_create),
             contentDescription = "Create",
             tint = Color.White,
-            modifier = Modifier.size(36.dp)
+            modifier = Modifier.size(32.dp)
         )
     }
 }
@@ -142,7 +145,6 @@ private fun SmallNavItem(
             modifier = Modifier.size(24.dp)//控制图标大小
 
         )
-        Spacer(modifier = Modifier.height(2.dp))//图标与文字间距
         Text(
             text = label,
             fontSize = 12.sp,
