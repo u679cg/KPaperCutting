@@ -31,6 +31,11 @@ class PaperCutEngine {
         color = Color.parseColor("#B02621")
         style = Paint.Style.FILL
     }
+    private val paperShadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#B02621")
+        style = Paint.Style.FILL
+        setShadowLayer(28f, 0f, 14f, Color.argb(80, 54, 18, 16))
+    }
     private val selectionPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#80FFD700")
         style = Paint.Style.FILL
@@ -511,6 +516,7 @@ class PaperCutEngine {
 
     private fun drawPaperContent(canvas: Canvas, path: Path) {
         canvas.save()
+        canvas.drawPath(path, paperShadowPaint)
         canvas.drawPath(path, paperPaint)
         loadedBitmap?.let { bitmap ->
             canvas.clipPath(path)
