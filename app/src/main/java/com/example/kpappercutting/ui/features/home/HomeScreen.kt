@@ -1,8 +1,15 @@
 package com.example.kpappercutting.ui.features.home
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -10,6 +17,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -24,6 +33,8 @@ import com.example.kpappercutting.R
 import com.example.kpappercutting.ui.theme.BackgroundCream
 import com.example.kpappercutting.ui.theme.CreamYellow
 import com.example.kpappercutting.ui.theme.PanmenFontFamily
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen() {
@@ -52,13 +63,33 @@ fun HomeScreen() {
 
         Spacer(modifier = Modifier.height(30.dp))
 
-        // 4. 我的关注动态 标题
-        Text(
-            text = "我的关注动态",
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF333333)
-        )
+        // 4. 官方资讯标题
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(48.dp)
+                    .height(1.dp)
+                    .background(Color(0xFFD6D6D6))
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = "官方资讯",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFFB8B8B8)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Box(
+                modifier = Modifier
+                    .width(48.dp)
+                    .height(1.dp)
+                    .background(Color(0xFFD6D6D6))
+            )
+        }
 
         // 此处下方可以继续添加动态列表 (LazyColumn 处理)
         Spacer(modifier = Modifier.height(100.dp)) // 留出底部栏空间
@@ -134,24 +165,89 @@ fun TopSearchBar() {
 
 @Composable
 fun PromotionCard() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(140.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .background(CreamYellow) // 主色调红
-//            .padding(24.dp)
-    ) {
-        //bannner
-        Image(
-            painter = painterResource(id = R.drawable.banner_1),
-            contentDescription = null,
-            modifier = Modifier
-                .fillMaxHeight()
-                .align(Alignment.Center),
-            contentScale = ContentScale.FillHeight
-        )
+    val banners = listOf(
+        R.drawable.banner_1,
+        R.drawable.banner_1,
+        R.drawable.banner_1
+    )
+    val pagerState = rememberPagerState(pageCount = { banners.size })
+    val scope = rememberCoroutineScope()
 
+    LaunchedEffect(pagerState, banners.size) {
+        if (banners.size <= 1) return@LaunchedEffect
+
+        while (true) {
+            delay(3500)
+            if (!pagerState.isScrollInProgress) {
+                val nextPage = (pagerState.currentPage + 1) % banners.size
+                pagerState.animateScrollToPage(nextPage)
+            }
+        }
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(140.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(CreamYellow)
+        ) { page ->
+            Image(
+                painter = painterResource(id = banners[page]),
+                contentDescription = "Promotion banner ${page + 1}",
+                modifier = Modifier
+                    .fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            banners.forEachIndexed { index, _ ->
+                val isSelected = index == pagerState.currentPage
+                val indicatorWidth = animateDpAsState(
+                    targetValue = if (isSelected) 24.dp else 8.dp,
+                    animationSpec = spring(
+                        dampingRatio = 0.8f,
+                        stiffness = Spring.StiffnessLow
+                    ),
+                    label = "indicatorWidth"
+                )
+                val indicatorColor = animateColorAsState(
+                    targetValue = if (isSelected) Color(0xFFB02621) else Color(0xFFD8C9B8),
+                    animationSpec = spring(
+                        dampingRatio = 0.9f,
+                        stiffness = Spring.StiffnessLow
+                    ),
+                    label = "indicatorColor"
+                )
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .clickable {
+                            if (index != pagerState.currentPage) {
+                                scope.launch {
+                                    pagerState.animateScrollToPage(index)
+                                }
+                            }
+                        }
+                        .background(indicatorColor.value)
+                        .size(
+                            width = indicatorWidth.value,
+                            height = 8.dp
+                        )
+                )
+            }
+        }
     }
 }
 
