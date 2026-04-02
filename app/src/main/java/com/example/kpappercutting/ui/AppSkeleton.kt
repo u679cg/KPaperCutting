@@ -27,7 +27,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.ui.unit.dp
 import com.example.kpappercutting.ui.navigation.CreateNavButton
 import com.example.kpappercutting.ui.navigation.SteeringBottomBar
