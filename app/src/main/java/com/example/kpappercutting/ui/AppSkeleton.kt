@@ -46,6 +46,7 @@ fun AppSkeleton() {
     var currentScreen by remember { mutableStateOf(Screen.Home) }
     var previousScreen by remember { mutableStateOf(Screen.Home) }
     val showBottomBar = currentScreen != Screen.Create
+    val cultureDrawBehindStatusBar = currentScreen == Screen.Culture
 
     fun navigateTo(screen: Screen) {
         if (screen == Screen.Create && currentScreen != Screen.Create) {
@@ -59,13 +60,15 @@ fun AppSkeleton() {
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .windowInsetsTopHeight(WindowInsets.statusBars)
-                .background(MaterialTheme.colorScheme.surface)
-                .align(Alignment.TopCenter)
-        )
+        if (!cultureDrawBehindStatusBar) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .windowInsetsTopHeight(WindowInsets.statusBars)
+                    .background(MaterialTheme.colorScheme.surface)
+                    .align(Alignment.TopCenter)
+            )
+        }
 
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -91,7 +94,10 @@ fun AppSkeleton() {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .statusBarsPadding()
+                        .then(
+                            if (screen == Screen.Culture) Modifier
+                            else Modifier.statusBarsPadding()
+                        )
                         .padding(bottom = if (screen == Screen.Create) 0.dp else 96.dp),
                     contentAlignment = Alignment.Center
                 ) {
