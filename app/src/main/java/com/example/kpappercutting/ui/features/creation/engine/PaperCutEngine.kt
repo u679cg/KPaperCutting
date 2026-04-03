@@ -13,6 +13,7 @@ import android.graphics.PorterDuffXfermode
 import android.graphics.RectF
 import android.graphics.Region
 import androidx.compose.ui.geometry.Offset
+import com.example.kpappercutting.ui.features.creation.CreationPaperDefaults
 import com.example.kpappercutting.data.model.PaperShape
 import com.example.kpappercutting.ui.features.creation.EditTool
 import com.example.kpappercutting.ui.features.creation.FoldMode
@@ -22,6 +23,7 @@ class PaperCutEngine {
     private data class Snapshot(
         val paperPath: Path,
         val sketchBitmap: Bitmap?,
+        val paperColor: Int,
         val shape: PaperShape,
         val foldMode: FoldMode,
         val isFolded: Boolean
@@ -103,6 +105,8 @@ class PaperCutEngine {
         private set
     var selectedTool: EditTool = EditTool.SCISSORS
         private set
+    var selectedPaperColor: Int = CreationPaperDefaults.DEFAULT_PAPER_COLOR
+        private set
     var foldMode: FoldMode = FoldMode.NONE
         private set
     var isFolded: Boolean = false
@@ -149,6 +153,16 @@ class PaperCutEngine {
         bumpRenderVersion()
     }
 
+    fun setPaperColor(color: Int) {
+        if (selectedPaperColor == color) return
+        selectedPaperColor = color
+        applyPaperColor(color)
+        if (canvasWidth > 0 && canvasHeight > 0) {
+            saveSnapshot()
+        }
+        bumpRenderVersion()
+    }
+
     fun setShape(shape: PaperShape) {
         if (selectedShape == shape) return
         selectedShape = shape
@@ -163,6 +177,8 @@ class PaperCutEngine {
     fun resetAll() {
         selectedTool = EditTool.SCISSORS
         selectedShape = PaperShape.CIRCLE
+        selectedPaperColor = CreationPaperDefaults.DEFAULT_PAPER_COLOR
+        applyPaperColor(selectedPaperColor)
         foldMode = FoldMode.NONE
         isFolded = false
         loadedBitmap = null
@@ -297,7 +313,10 @@ class PaperCutEngine {
                     performCut()
                 }
             }
-            EditTool.PENCIL, EditTool.ERASER -> applySketch()
+            EditTool.PENCIL, EditTool.ERASER -> {
+                applySketch()
+                saveSnapshot()
+            }
         }
         strokeActive = false
         strokePendingEntry = false
@@ -397,9 +416,9 @@ class PaperCutEngine {
     }
 
     private fun performCut() {
-        saveSnapshot()
         mainPath.op(drawingPath, Path.Op.DIFFERENCE)
         sketchCanvas?.drawPath(drawingPath, clearFillPaint)
+        saveSnapshot()
     }
 
     private fun applySketch() {
@@ -490,6 +509,7 @@ class PaperCutEngine {
         undoStack += Snapshot(
             paperPath = Path(mainPath),
             sketchBitmap = sketchBitmap.deepCopy(),
+            paperColor = selectedPaperColor,
             shape = selectedShape,
             foldMode = foldMode,
             isFolded = isFolded
@@ -498,6 +518,8 @@ class PaperCutEngine {
     }
 
     private fun restoreSnapshot(snapshot: Snapshot) {
+        selectedPaperColor = snapshot.paperColor
+        applyPaperColor(selectedPaperColor)
         selectedShape = snapshot.shape
         foldMode = snapshot.foldMode
         isFolded = snapshot.isFolded
@@ -532,9 +554,6 @@ class PaperCutEngine {
 
     private fun beginStrokeAt(point: Offset) {
         strokePendingEntry = false
-        if (selectedTool == EditTool.PENCIL || selectedTool == EditTool.ERASER) {
-            saveSnapshot()
-        }
         drawingPath.reset()
         drawingPath.moveTo(point.x, point.y)
     }
@@ -622,6 +641,11 @@ class PaperCutEngine {
         FoldMode.FIVE_POINT -> 360f / 10f
         FoldMode.EIGHT_POINT -> 360f / 16f
         FoldMode.NONE -> 360f
+    }
+
+    private fun applyPaperColor(color: Int) {
+        paperPaint.color = color
+        paperShadowPaint.color = color
     }
 
     private fun bumpRenderVersion() {

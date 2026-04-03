@@ -7,6 +7,7 @@ import com.example.kpappercutting.data.model.PaperShape
 sealed interface CreateUiAction {
     data class SelectShape(val shape: PaperShape) : CreateUiAction
     data class SelectTool(val tool: EditTool) : CreateUiAction
+    data class SelectPaperColor(val color: Int) : CreateUiAction
     data class SelectFoldMode(val mode: FoldMode) : CreateUiAction
     data class StartStroke(val point: Offset) : CreateUiAction
     data class AppendStrokePoint(val point: Offset) : CreateUiAction

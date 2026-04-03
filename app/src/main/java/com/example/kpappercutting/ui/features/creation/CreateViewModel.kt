@@ -21,6 +21,7 @@ class CreateViewModel : ViewModel() {
         when (action) {
             is CreateUiAction.SelectShape -> engine.setShape(action.shape)
             is CreateUiAction.SelectTool -> engine.setTool(action.tool)
+            is CreateUiAction.SelectPaperColor -> engine.setPaperColor(action.color)
             is CreateUiAction.SelectFoldMode -> engine.selectFoldMode(action.mode)
             is CreateUiAction.StartStroke -> engine.startStroke(action.point)
             is CreateUiAction.AppendStrokePoint -> engine.appendStroke(action.point)
@@ -47,6 +48,7 @@ class CreateViewModel : ViewModel() {
         uiState = CreateUiState(
             selectedShape = engine.selectedShape,
             selectedTool = engine.selectedTool,
+            selectedPaperColor = engine.selectedPaperColor,
             foldMode = engine.foldMode,
             isFolded = engine.isFolded,
             canUndo = engine.canUndo,

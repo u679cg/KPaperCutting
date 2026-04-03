@@ -7,6 +7,10 @@ enum class EditTool {
     ERASER
 }
 
+object CreationPaperDefaults {
+    const val DEFAULT_PAPER_COLOR: Int = 0xFFB02621.toInt()
+}
+
 enum class CreationMenuAction {
     INITIALIZE_CANVAS,
     SAVE_DRAFT,

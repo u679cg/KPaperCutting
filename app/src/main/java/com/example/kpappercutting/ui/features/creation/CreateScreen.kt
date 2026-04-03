@@ -1,24 +1,58 @@
 package com.example.kpappercutting.ui.features.creation
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.kpappercutting.R
 import com.example.kpappercutting.data.model.PaperShape
-import com.example.kpappercutting.ui.features.creation.component.BottomToolPaletteSection
-import com.example.kpappercutting.ui.features.creation.component.CreationTopControlBar
 import com.example.kpappercutting.ui.features.creation.component.PaperCanvas
-import com.example.kpappercutting.ui.features.creation.component.SideActionItem
-import com.example.kpappercutting.ui.features.creation.component.SideActionPanel
 import com.example.kpappercutting.ui.features.creation.engine.PaperCutEngine
+import com.example.kpappercutting.ui.theme.PaperRed
 
 @Composable
 fun CreateScreen(
@@ -28,79 +62,438 @@ fun CreateScreen(
     onMenuAction: (CreationMenuAction) -> Unit = {},
     onBack: () -> Unit = {}
 ) {
-    Box(
+    var isColorPaletteVisible by rememberSaveable { mutableStateOf(false) }
+
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFFFDF8F2))
+            .padding(top = 12.dp, bottom = 0.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        CreateHeader(
+            isTraditionalSelected = uiState.selectedShape == PaperShape.SQUARE,
+            onTraditionalClick = { onAction(CreateUiAction.SelectShape(PaperShape.SQUARE)) },
+            onFreeClick = { onAction(CreateUiAction.SelectShape(PaperShape.CIRCLE)) },
+            onBack = onBack,
+            onShareClick = { onMenuAction(CreationMenuAction.EXPORT_TO_GALLERY) }
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        TopToolbar(
+            activeTool = uiState.selectedTool,
+            canUndo = uiState.canUndo,
+            canRedo = uiState.canRedo,
+            onUndo = { onAction(CreateUiAction.Undo) },
+            onRedo = { onAction(CreateUiAction.Redo) },
+            onSelectTool = { onAction(CreateUiAction.SelectTool(it)) },
+            isColorControlSelected = isColorPaletteVisible,
+            onColorControlClick = { isColorPaletteVisible = !isColorPaletteVisible }
+        )
+
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .offset(y = (-96).dp),
-            contentAlignment = Alignment.Center
+                .weight(1f)
+                .fillMaxWidth()
         ) {
             PaperCanvas(
                 uiState = uiState,
                 engine = engine,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = 74.dp),
                 onAction = onAction
+            )
+
+            androidx.compose.animation.AnimatedVisibility(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 14.dp, end = 12.dp),
+                visible = isColorPaletteVisible,
+                enter = fadeIn() + slideInVertically(initialOffsetY = { -it / 2 }),
+                exit = fadeOut() + slideOutVertically(targetOffsetY = { -it / 3 })
+            ) {
+                ColorPaperStrip(
+                    selectedColor = uiState.selectedPaperColor,
+                    onSelectColor = { color ->
+                        onAction(CreateUiAction.SelectPaperColor(color))
+                    }
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 18.dp)
+            ) {
+                CreationBottomButton()
+            }
+        }
+    }
+}
+
+@Composable
+private fun CreateHeader(
+    isTraditionalSelected: Boolean,
+    onTraditionalClick: () -> Unit,
+    onFreeClick: () -> Unit,
+    onBack: () -> Unit,
+    onShareClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+    ) {
+        SimpleIconButton(
+            modifier = Modifier.align(Alignment.CenterStart),
+            onClick = onBack
+        ) {
+            Image(
+                painter = painterResource(R.drawable.ic_home),
+                contentDescription = "Home",
+                modifier = Modifier.size(22.dp)
             )
         }
 
-        CreationTopControlBar(
-            currentShape = uiState.selectedShape,
-            onShapeChange = { onAction(CreateUiAction.SelectShape(it)) },
-            onMenuAction = onMenuAction,
-            onBack = onBack
-        )
-
-        SideActionPanel(
-            actions = listOf(
-                SideActionItem("🗑️", "清空") { onAction(CreateUiAction.ClearCanvas) },
-                SideActionItem("↩️", "撤销", enabled = uiState.canUndo) {
-                    onAction(CreateUiAction.Undo)
-                },
-                SideActionItem("↪️", "恢复", enabled = uiState.canRedo) {
-                    onAction(CreateUiAction.Redo)
-                }
-            ),
+        Surface(
             modifier = Modifier
-                .align(Alignment.CenterStart)
-                .padding(start = 16.dp, top = 144.dp)
-        )
+                .align(Alignment.TopCenter)
+                .width(170.dp)
+                .height(48.dp),
+//                .shadow(10.dp, RoundedCornerShape(20.dp), clip = false),
+            shape = RoundedCornerShape(24.dp),
+            color = Color(0xFFFDF8F2)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                ModeTab(
+                    text = "传统",
+                    selected = isTraditionalSelected,
+                    modifier = Modifier.weight(1f),
+                    onClick = onTraditionalClick
+                )
+                ModeTab(
+                    text = "自由",
+                    selected = !isTraditionalSelected,
+                    modifier = Modifier.weight(1f),
+                    onClick = onFreeClick
+                )
+            }
+        }
 
-        SideActionPanel(
-            actions = listOf(
-                SideActionItem(
-                    icon = if (uiState.foldMode == FoldMode.FIVE_POINT) "⌛" else "◻️",
-                    label = "五角",
-                    enabled = uiState.canSelectFiveFold
-                ) {
-                    onAction(CreateUiAction.SelectFoldMode(FoldMode.FIVE_POINT))
-                },
-                SideActionItem(
-                    icon = if (uiState.foldMode == FoldMode.EIGHT_POINT) "🛡️" else "◻️",
-                    label = "八角",
-                    enabled = uiState.canSelectEightFold
-                ) {
-                    onAction(CreateUiAction.SelectFoldMode(FoldMode.EIGHT_POINT))
-                },
-                SideActionItem(
-                    icon = "✨",
-                    label = if (uiState.isFolded) "展开" else "收起",
-                    enabled = uiState.canExpand
-                ) {
-                    onAction(CreateUiAction.ToggleFold)
-                }
-            ),
+        SimpleIconButton(
+            modifier = Modifier.align(Alignment.CenterEnd),
+            onClick = onShareClick
+        ) {
+            Text(
+                text = "↗",
+                color = Color(0xFFD8D8D8),
+                fontSize = 22.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+    }
+}
+
+@Composable
+private fun ModeTab(
+    text: String,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .padding(4.dp)
+            .fillMaxHeight()
+            .clip(RoundedCornerShape(20.dp))
+            .background(if (selected) Color.White else Color.Transparent)
+            .clickable(onClick = onClick),
+//            .shadow(if (selected) 4.dp else 0.dp, RoundedCornerShape(20.dp), clip = false),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            color = if (selected) Color(0xFF1F1F1F) else Color(0xFF4E4E4E),
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
+private fun SimpleIconButton(
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .size(36.dp)
+            .clip(CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        content()
+    }
+}
+
+@Composable
+private fun CreationBottomButton() {
+    Surface(
+        modifier = Modifier
+            .width(220.dp)
+            .height(56.dp)
+            .shadow(4.dp, RoundedCornerShape(28.dp), clip = false),
+        shape = RoundedCornerShape(28.dp),
+        color = Color.White
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = "选择剪纸技法",
+                color = Color(0xFF6C6C6C),
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
+@Composable
+private fun TopToolbar(
+    activeTool: EditTool,
+    canUndo: Boolean,
+    canRedo: Boolean,
+    onUndo: () -> Unit,
+    onRedo: () -> Unit,
+    onSelectTool: (EditTool) -> Unit,
+    isColorControlSelected: Boolean,
+    onColorControlClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(42.dp)
+            .padding(horizontal = 2.dp),
+        shape = RoundedCornerShape(21.dp),
+        color = Color.White
+    ) {
+        Row(
             modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end = 16.dp, top = 144.dp)
-        )
+                .fillMaxSize()
+                .padding(horizontal = 26.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ToolbarIcon(
+                drawableRes = R.drawable.ic_undo,
+                enabled = canUndo,
+                selected = false,
+                onClick = onUndo
+            )
+            Spacer(modifier = Modifier.weight(0.5f))
+            ToolbarIcon(
+                drawableRes = R.drawable.ic_redo,
+                enabled = canRedo,
+                selected = false,
+                onClick = onRedo
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            ToolbarIcon(
+                drawableRes = R.drawable.ic_scissors,
+                enabled = true,
+                selected = activeTool == EditTool.SCISSORS,
+                onClick = { onSelectTool(EditTool.SCISSORS) }
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            ToolbarIcon(
+                drawableRes = R.drawable.ic_pencil,
+                enabled = true,
+                selected = activeTool == EditTool.PENCIL,
+                onClick = { onSelectTool(EditTool.PENCIL) }
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            ToolbarIcon(
+                drawableRes = R.drawable.ic_eraser,
+                enabled = true,
+                selected = activeTool == EditTool.ERASER,
+                onClick = { onSelectTool(EditTool.ERASER) }
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            ToolbarIcon(
+                drawableRes = R.drawable.ic_pattern,
+                enabled = true,
+                selected = false,
+                onClick = {}
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            ToolbarIcon(
+                drawableRes = R.drawable.ic_ai,
+                enabled = true,
+                selected = false,
+                onClick = {}
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            ToolbarIcon(
+                drawableRes = R.drawable.ic_color_control,
+                enabled = true,
+                selected = isColorControlSelected,
+                onClick = onColorControlClick
+            )
+        }
+    }
+}
 
-        BottomToolPaletteSection(
-            activeTool = uiState.selectedTool,
-            onToolSelect = { onAction(CreateUiAction.SelectTool(it)) }
+@Composable
+private fun ColorPaperStrip(
+    selectedColor: Int,
+    onSelectColor: (Int) -> Unit
+) {
+    val paperColors = listOf(
+        0xFFB02621.toInt(),
+        0xFFC74B2A.toInt(),
+        0xFFD8892B.toInt(),
+        0xFF3F8C54.toInt(),
+        0xFF4A6FA8.toInt(),
+        0xFF6E4AA8.toInt(),
+        0xFF2E2E2E.toInt()
+    )
+
+    Surface(
+        modifier = Modifier.shadow(10.dp, RoundedCornerShape(24.dp), clip = false),
+        shape = RoundedCornerShape(24.dp),
+        color = Color.White.copy(alpha = 0.96f)
+    ) {
+        Row(
+            modifier = Modifier
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 14.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.Bottom
+        ) {
+            paperColors.forEachIndexed { index, colorInt ->
+                ColorPaperChip(
+                    color = Color(colorInt),
+                    selected = selectedColor == colorInt,
+                    onClick = { onSelectColor(colorInt) }
+                )
+                if (index != paperColors.lastIndex) {
+                    Spacer(modifier = Modifier.width(10.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ColorPaperChip(
+    color: Color,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val lift by animateDpAsState(
+        targetValue = if (selected) (-10).dp else 0.dp,
+        animationSpec = spring(stiffness = 420f),
+        label = "paper_chip_lift"
+    )
+    val scale by animateFloatAsState(
+        targetValue = if (selected) 1.06f else 1f,
+        animationSpec = spring(stiffness = 380f),
+        label = "paper_chip_scale"
+    )
+
+    Box(
+        modifier = Modifier
+            .width(54.dp)
+            .height(72.dp)
+            .graphicsLayer {
+                translationY = lift.toPx()
+                scaleX = scale
+                scaleY = scale
+            }
+            .shadow(
+                elevation = if (selected) 8.dp else 4.dp,
+                shape = RoundedCornerShape(10.dp),
+                clip = false,
+                ambientColor = Color(0x12000000),
+                spotColor = Color(0x16000000)
+            )
+            .clip(RoundedCornerShape(10.dp))
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        color.copy(alpha = 0.98f),
+                        color.copy(alpha = 0.94f)
+                    )
+                )
+            )
+            .drawWithCache {
+                onDrawWithContent {
+                    drawContent()
+                    val xStep = size.width / 5f
+                    val yStep = size.height / 7f
+                    for (x in 0..5) {
+                        for (y in 0..7) {
+                            val offsetX = x * xStep + ((y % 2) * xStep * 0.22f)
+                            val offsetY = y * yStep
+                            val alpha = if ((x + y) % 3 == 0) 0.06f else 0.035f
+                            drawCircle(
+                                color = Color.White.copy(alpha = alpha),
+                                radius = 1.1.dp.toPx(),
+                                center = androidx.compose.ui.geometry.Offset(offsetX, offsetY)
+                            )
+                        }
+                    }
+                    drawRect(Color.Black.copy(alpha = 0.04f))
+                }
+            }
+            .clickable(onClick = onClick)
+    ) {
+        if (selected) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 6.dp)
+                    .width(22.dp)
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(Color.White.copy(alpha = 0.72f))
+            )
+        }
+    }
+}
+
+@Composable
+private fun ToolbarIcon(
+    drawableRes: Int,
+    enabled: Boolean,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val tint = when {
+        selected -> PaperRed
+        enabled -> Color(0xFF7D7D7D)
+        else -> Color(0xFFD2D2D2)
+    }
+
+    Box(
+        modifier = Modifier
+            .size(26.dp)
+            .clip(CircleShape)
+            .background(if (selected) Color(0xFFFCF0E1) else Color.Transparent)
+//            .border(
+//                width = if (selected) 1.dp else 0.dp,
+//                color = if (selected) Color(0xFFE5CBB0) else Color.Transparent,
+//                shape = CircleShape
+//            )
+            .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            painter = painterResource(drawableRes),
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier.size(18.dp)
         )
     }
 }
@@ -111,7 +504,7 @@ fun CreateScreenPreview() {
     MaterialTheme {
         CreateScreen(
             uiState = CreateUiState(
-                selectedShape = PaperShape.CIRCLE,
+                selectedShape = PaperShape.SQUARE,
                 selectedTool = EditTool.SCISSORS,
                 canUndo = true
             ),
@@ -121,4 +514,3 @@ fun CreateScreenPreview() {
         )
     }
 }
-

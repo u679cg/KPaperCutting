@@ -4,8 +4,9 @@ package com.example.kpappercutting.ui.features.creation
 import com.example.kpappercutting.data.model.PaperShape
 
 data class CreateUiState(
-    val selectedShape: PaperShape = PaperShape.CIRCLE,
+    val selectedShape: PaperShape = PaperShape.SQUARE,
     val selectedTool: EditTool = EditTool.SCISSORS,
+    val selectedPaperColor: Int = CreationPaperDefaults.DEFAULT_PAPER_COLOR,
     val foldMode: FoldMode = FoldMode.NONE,
     val isFolded: Boolean = false,
     val canUndo: Boolean = false,
