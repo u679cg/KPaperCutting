@@ -69,6 +69,7 @@ fun CreateScreen(
 ) {
     var isColorPaletteVisible by rememberSaveable { mutableStateOf(false) }
     var isEraserSliderVisible by rememberSaveable { mutableStateOf(false) }
+    var isTechniquePanelVisible by rememberSaveable { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -156,7 +157,47 @@ fun CreateScreen(
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 18.dp)
             ) {
-                CreationBottomButton()
+                BottomActionBar(
+                    canExpand = uiState.canExpand,
+                    onClear = { onAction(CreateUiAction.ClearCanvas) },
+                    onTechnique = { isTechniquePanelVisible = true },
+                    onExpand = { onAction(CreateUiAction.ToggleFold) }
+                )
+            }
+
+            androidx.compose.animation.AnimatedVisibility(
+                visible = isTechniquePanelVisible,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.22f))
+                        .clickable { isTechniquePanelVisible = false }
+                )
+            }
+
+            androidx.compose.animation.AnimatedVisibility(
+                modifier = Modifier.align(Alignment.BottomCenter),
+                visible = isTechniquePanelVisible,
+                enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
+                exit = fadeOut() + slideOutVertically(targetOffsetY = { it })
+            ) {
+                TechniqueBottomPanel(
+                    currentMode = uiState.foldMode,
+                    canSelectFiveFold = uiState.canSelectFiveFold,
+                    canSelectEightFold = uiState.canSelectEightFold,
+                    onDismiss = { isTechniquePanelVisible = false },
+                    onSelectFiveFold = {
+                        onAction(CreateUiAction.SelectFoldMode(FoldMode.FIVE_POINT))
+                        isTechniquePanelVisible = false
+                    },
+                    onSelectEightFold = {
+                        onAction(CreateUiAction.SelectFoldMode(FoldMode.EIGHT_POINT))
+                        isTechniquePanelVisible = false
+                    }
+                )
             }
         }
     }
@@ -272,12 +313,15 @@ private fun SimpleIconButton(
 }
 
 @Composable
-private fun CreationBottomButton() {
+private fun CreationBottomButton(
+    onClick: () -> Unit
+) {
     Surface(
         modifier = Modifier
             .width(220.dp)
             .height(56.dp)
-            .shadow(4.dp, RoundedCornerShape(28.dp), clip = false),
+            .shadow(4.dp, RoundedCornerShape(28.dp), clip = false)
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(28.dp),
         color = Color.White
     ) {
@@ -288,6 +332,174 @@ private fun CreationBottomButton() {
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Medium
             )
+        }
+    }
+}
+
+@Composable
+private fun BottomActionBar(
+    canExpand: Boolean,
+    onClear: () -> Unit,
+    onTechnique: () -> Unit,
+    onExpand: () -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        CircleActionButton(
+            text = "清空",
+            enabled = true,
+            onClick = onClear
+        )
+        Spacer(modifier = Modifier.width(14.dp))
+        CreationBottomButton(onClick = onTechnique)
+        Spacer(modifier = Modifier.width(14.dp))
+        CircleActionButton(
+            text = "展开",
+            enabled = canExpand,
+            onClick = onExpand
+        )
+    }
+}
+
+@Composable
+private fun CircleActionButton(
+    text: String,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .size(56.dp)
+            .shadow(4.dp, CircleShape, clip = false)
+            .clickable(enabled = enabled, onClick = onClick),
+        shape = CircleShape,
+        color = if (enabled) Color.White else Color(0xFFF1ECE6)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = text,
+                color = if (enabled) Color(0xFF6C6C6C) else Color(0xFFBBB1A7),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
+@Composable
+private fun TechniqueBottomPanel(
+    currentMode: FoldMode,
+    canSelectFiveFold: Boolean,
+    canSelectEightFold: Boolean,
+    onDismiss: () -> Unit,
+    onSelectFiveFold: () -> Unit,
+    onSelectEightFold: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(18.dp, RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), clip = false),
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        color = Color(0xFFFFFBF6)
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .width(44.dp)
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(Color(0xFFD9D0C6))
+            )
+            Spacer(modifier = Modifier.height(14.dp))
+            Text(
+                text = "选择剪纸技法",
+                color = Color(0xFF2F2F2F),
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(modifier = Modifier.height(14.dp))
+            TechniqueOptionCard(
+                title = "五角折法",
+                subtitle = "折成五角扇面，适合星纹和花瓣结构",
+                selected = currentMode == FoldMode.FIVE_POINT,
+                enabled = canSelectFiveFold,
+                onClick = onSelectFiveFold
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            TechniqueOptionCard(
+                title = "八角折法",
+                subtitle = "折成八角扇面，适合雪花和密集对称纹样",
+                selected = currentMode == FoldMode.EIGHT_POINT,
+                enabled = canSelectEightFold,
+                onClick = onSelectEightFold
+            )
+            Spacer(modifier = Modifier.height(14.dp))
+            Text(
+                text = "暂不选择",
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .clickable(onClick = onDismiss),
+                color = Color(0xFF8D857C),
+                fontSize = 14.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun TechniqueOptionCard(
+    title: String,
+    subtitle: String,
+    selected: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled, onClick = onClick),
+        shape = RoundedCornerShape(22.dp),
+        color = when {
+            selected -> Color(0xFFFCF0E1)
+            enabled -> Color.White
+            else -> Color(0xFFF2ECE5)
+        }
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(16.dp)
+                    .clip(CircleShape)
+                    .background(
+                        when {
+                            selected -> PaperRed
+                            enabled -> Color(0xFFE3DBD1)
+                            else -> Color(0xFFE9E2D9)
+                        }
+                    )
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    color = if (enabled) Color(0xFF2E2E2E) else Color(0xFFABA39A),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = subtitle,
+                    color = if (enabled) Color(0xFF847A70) else Color(0xFFC0B7AE),
+                    fontSize = 12.sp
+                )
+            }
         }
     }
 }
