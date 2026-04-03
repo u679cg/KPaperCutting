@@ -11,12 +11,12 @@ data class CultureEraUiModel(
 )
 
 data class CultureTechniqueUiModel(
-    val emoji: String,
+    val iconResId: Int,
     val title: String
 )
 
 data class CulturePatternUiModel(
-    val emoji: String,
+    val iconResId: Int,
     val title: String
 )
 
@@ -70,14 +70,14 @@ val defaultCultureEras = listOf(
 )
 
 val defaultCultureTechniques = listOf(
-    CultureTechniqueUiModel("✂️", "剪刻技法"),
-    CultureTechniqueUiModel("📐", "折剪技法"),
-    CultureTechniqueUiModel("🧠", "创作方法")
+    CultureTechniqueUiModel(R.drawable.skill_1, "剪刻技法"),
+    CultureTechniqueUiModel(R.drawable.skill_2, "折剪技法"),
+    CultureTechniqueUiModel(R.drawable.skill_3, "创作方法")
 )
 
 val defaultCulturePatterns = listOf(
-    CulturePatternUiModel("🪢", "盘长纹"),
-    CulturePatternUiModel("🔶", "方胜纹"),
-    CulturePatternUiModel("🌸", "连环纹"),
-    CulturePatternUiModel("💮", "联珠纹")
+    CulturePatternUiModel(R.drawable.pattern_1, "盘长纹"),
+    CulturePatternUiModel(R.drawable.pattern_2, "方胜纹"),
+    CulturePatternUiModel(R.drawable.pattern_3, "连环纹"),
+    CulturePatternUiModel(R.drawable.pattern_4, "联珠纹")
 )

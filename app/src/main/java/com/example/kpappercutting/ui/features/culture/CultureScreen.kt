@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -186,7 +185,7 @@ private fun PaperCutHistorySection(
             state = pagerState,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(100.dp),
+                .height(80.dp),
             pageSize = PageSize.Fixed(pageWidth),
             pageSpacing = pageSpacing,
             beyondViewportPageCount = 1,
@@ -199,8 +198,8 @@ private fun PaperCutHistorySection(
                 (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
             ).absoluteValue.coerceIn(0f, 1f)
             val selectedFraction = 1f - pageOffset
-            val cardScale = lerp(0.9f, 1.08f, selectedFraction)
-            val cardAlpha = lerp(0.72f, 1f, selectedFraction)
+            val cardScale = leap(0.9f, 1.08f, selectedFraction)
+            val cardAlpha = leap(0.72f, 1f, selectedFraction)
             val containerColor = lerp(Color.White, Color(0xFFFFF8F0), selectedFraction)
             val borderColor = lerp(Color(0xFF5F5A53), Color(0xFF7F4E1E), selectedFraction)
             val textColor = lerp(Color(0xFF8E8E8E), Color(0xFF7F4E1E), selectedFraction)
@@ -279,7 +278,7 @@ private fun PaperCutHistorySection(
 
 private fun Int.floorMod(other: Int): Int = ((this % other) + other) % other
 
-private fun lerp(start: Float, stop: Float, fraction: Float): Float {
+private fun leap(start: Float, stop: Float, fraction: Float): Float {
     return start + (stop - start) * fraction
 }
 
@@ -301,14 +300,16 @@ private fun TechniqueSection(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 18.dp),
+                        .padding(vertical = 8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(
-                        text = item.emoji,
-                        fontSize = 34.sp
+                    Image(
+                        painter = painterResource(id = item.iconResId),
+                        contentDescription = item.title,
+                        modifier = Modifier.size(60.dp),
+                        contentScale = ContentScale.Fit
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
+//                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = item.title,
                         fontSize = 15.sp,
@@ -325,7 +326,9 @@ private fun ClassicPatternsSection(
     items: List<CulturePatternUiModel>
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp,0.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.Top
     ) {
@@ -335,17 +338,17 @@ private fun ClassicPatternsSection(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(58.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFFFCEEEA)),
+                        .size(58.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = item.emoji,
-                        fontSize = 28.sp
+                    Image(
+                        painter = painterResource(id = item.iconResId),
+                        contentDescription = item.title,
+                        modifier = Modifier.size(58.dp),
+                        contentScale = ContentScale.Fit
                     )
                 }
-                Spacer(modifier = Modifier.height(10.dp))
+//                Spacer(modifier = Modifier.height(10.dp))
                 Text(
                     text = item.title,
                     fontSize = 13.sp,
