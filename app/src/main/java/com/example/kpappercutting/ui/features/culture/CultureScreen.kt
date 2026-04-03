@@ -20,7 +20,6 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PageSize
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
@@ -107,17 +106,16 @@ private fun CultureScreenContent(
                 initialSelectedIndex = uiState.selectedEraIndex,
                 onEraSettled = onEraSettled
             )
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(18.dp))
             SectionTitle("剪纸技法")
             Spacer(modifier = Modifier.height(14.dp))
             TechniqueSection(uiState.techniques)
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(18.dp))
             SectionTitle("经典纹样")
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             ClassicPatternsSection(uiState.patterns)
-            Spacer(modifier = Modifier.height(26.dp))
+            Spacer(modifier = Modifier.height(16.dp))
             BottomEndMark()
-            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }
@@ -201,7 +199,7 @@ private fun PaperCutHistorySection(
             val cardScale = leap(0.9f, 1.08f, selectedFraction)
             val cardAlpha = leap(0.72f, 1f, selectedFraction)
             val containerColor = lerp(Color.White, Color(0xFFFFF8F0), selectedFraction)
-            val borderColor = lerp(Color(0xFF5F5A53), Color(0xFF7F4E1E), selectedFraction)
+            val borderColor = lerp(Color(0xFF8E8E8E), Color(0xFFEBCB9C), selectedFraction)
             val textColor = lerp(Color(0xFF8E8E8E), Color(0xFF7F4E1E), selectedFraction)
 
             Surface(
@@ -263,14 +261,14 @@ private fun PaperCutHistorySection(
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = Color(0xFFF8F1E7),
-            shape = RoundedCornerShape(22.dp)
+            shape = RoundedCornerShape(18.dp)
         ) {
             Text(
                 text = selectedEra.description,
-                modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                 color = Color(0xFF8A7A67),
-                fontSize = 13.sp,
-                lineHeight = 22.sp
+                fontSize = 12.sp,
+                lineHeight = 18.sp
             )
         }
     }
