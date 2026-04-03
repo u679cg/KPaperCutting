@@ -27,7 +27,11 @@ class PaperCutEngine {
         val paperColor: Int,
         val shape: PaperShape,
         val foldMode: FoldMode,
-        val isFolded: Boolean
+        val isFolded: Boolean,
+        val preFoldPaperPath: Path?,
+        val preFoldSketchBitmap: Bitmap?,
+        val foldedBasePath: Path?,
+        val foldedBaseSketchBitmap: Bitmap?
     )
 
     private val paperPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -75,6 +79,9 @@ class PaperCutEngine {
         xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
         style = Paint.Style.FILL
     }
+    private val clearBitmapPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
+    }
 
     private var canvasWidth: Int = 0
     private var canvasHeight: Int = 0
@@ -101,6 +108,10 @@ class PaperCutEngine {
     private var strokePendingEntry = false
     private var renderVersionInternal = 0
     private var loadedBitmap: Bitmap? = null
+    private var preFoldPaperPath: Path? = null
+    private var preFoldSketchBitmap: Bitmap? = null
+    private var foldedBasePath: Path? = null
+    private var foldedBaseSketchBitmap: Bitmap? = null
 
     var selectedShape: PaperShape = PaperShape.CIRCLE
         private set
@@ -181,8 +192,7 @@ class PaperCutEngine {
     }
 
     fun clearCanvas() {
-        rebuildPaperPath(clearSketch = true, resetHistory = true)
-        resetTransform()
+        resetAll()
     }
 
     fun resetAll() {
@@ -195,6 +205,10 @@ class PaperCutEngine {
         applyPaperColor(selectedPaperColor)
         foldMode = FoldMode.NONE
         isFolded = false
+        preFoldPaperPath = null
+        preFoldSketchBitmap = null
+        foldedBasePath = null
+        foldedBaseSketchBitmap = null
         loadedBitmap = null
         rebuildPaperPath(clearSketch = true, resetHistory = true)
         resetTransform()
@@ -219,9 +233,10 @@ class PaperCutEngine {
         when {
             foldMode == FoldMode.NONE -> {
                 foldMode = mode
-                isFolded = true
-                rebuildPaperPath(clearSketch = true, resetHistory = true)
+                enterFoldedState()
                 resetTransform()
+                saveSnapshot()
+                bumpRenderVersion()
             }
             foldMode == mode && !isFolded -> {
                 foldLogic()
@@ -454,19 +469,7 @@ class PaperCutEngine {
     }
 
     private fun foldLogic() {
-        val wedge = Path().apply {
-            moveTo(centerX, centerY)
-            arcTo(paperBounds, -90f, getFoldSweepAngle())
-            close()
-        }
-        mainPath.op(wedge, Path.Op.INTERSECT)
-
-        val outside = Path().apply {
-            addRect(0f, 0f, canvasWidth.toFloat(), canvasHeight.toFloat(), Path.Direction.CW)
-            op(wedge, Path.Op.DIFFERENCE)
-        }
-        sketchCanvas?.drawPath(outside, clearFillPaint)
-        isFolded = true
+        enterFoldedState()
         saveSnapshot()
     }
 
@@ -477,41 +480,30 @@ class PaperCutEngine {
             FoldMode.NONE -> return
         }
 
-        val mirroredPetal = Path().apply {
-            addPath(mainPath)
-            val mirrorMatrix = Matrix().apply { postScale(-1f, 1f, centerX, centerY) }
-            addPath(mainPath, mirrorMatrix)
-        }
-        val fullPath = Path()
-        val rotateMatrix = Matrix()
-        val angleStep = 360f / segments
-        repeat(segments) { index ->
-            rotateMatrix.reset()
-            rotateMatrix.postRotate(index * angleStep, centerX, centerY)
-            fullPath.addPath(mirroredPetal, rotateMatrix)
-        }
-        mainPath = fullPath
-
-        val sourceBitmap = sketchBitmap
-        if (sourceBitmap == null) {
+        val basePath = preFoldPaperPath
+        val baseFoldedPath = foldedBasePath
+        if (basePath == null || baseFoldedPath == null) {
             isFolded = false
             return
         }
-        val expandedBitmap = Bitmap.createBitmap(canvasWidth, canvasHeight, Bitmap.Config.ARGB_8888)
-        val expandedCanvas = Canvas(expandedBitmap)
-        repeat(segments) { index ->
-            expandedCanvas.save()
-            expandedCanvas.rotate(index * angleStep, centerX, centerY)
-            expandedCanvas.drawBitmap(sourceBitmap, 0f, 0f, null)
-            expandedCanvas.save()
-            expandedCanvas.scale(-1f, 1f, centerX, centerY)
-            expandedCanvas.drawBitmap(sourceBitmap, 0f, 0f, null)
-            expandedCanvas.restore()
-            expandedCanvas.restore()
+
+        val foldedRemovedArea = Path(baseFoldedPath).apply {
+            op(mainPath, Path.Op.DIFFERENCE)
         }
-        sketchBitmap = expandedBitmap
-        sketchCanvas = Canvas(expandedBitmap)
+        val expandedRemovedArea = expandPathByFoldSymmetry(foldedRemovedArea, segments)
+        mainPath = Path(basePath).apply {
+            op(expandedRemovedArea, Path.Op.DIFFERENCE)
+        }
+
+        val restoredSketch = preFoldSketchBitmap.deepCopy()
+            ?: Bitmap.createBitmap(canvasWidth, canvasHeight, Bitmap.Config.ARGB_8888)
+        sketchBitmap = restoredSketch
+        sketchCanvas = Canvas(restoredSketch)
         isFolded = false
+        preFoldPaperPath = null
+        preFoldSketchBitmap = null
+        foldedBasePath = null
+        foldedBaseSketchBitmap = null
         clipSketchToPaper()
         saveSnapshot()
     }
@@ -526,7 +518,11 @@ class PaperCutEngine {
             paperColor = selectedPaperColor,
             shape = selectedShape,
             foldMode = foldMode,
-            isFolded = isFolded
+            isFolded = isFolded,
+            preFoldPaperPath = preFoldPaperPath?.let(::Path),
+            preFoldSketchBitmap = preFoldSketchBitmap.deepCopy(),
+            foldedBasePath = foldedBasePath?.let(::Path),
+            foldedBaseSketchBitmap = foldedBaseSketchBitmap.deepCopy()
         )
         redoStack.clear()
     }
@@ -537,6 +533,10 @@ class PaperCutEngine {
         selectedShape = snapshot.shape
         foldMode = snapshot.foldMode
         isFolded = snapshot.isFolded
+        preFoldPaperPath = snapshot.preFoldPaperPath?.let(::Path)
+        preFoldSketchBitmap = snapshot.preFoldSketchBitmap.deepCopy()
+        foldedBasePath = snapshot.foldedBasePath?.let(::Path)
+        foldedBaseSketchBitmap = snapshot.foldedBaseSketchBitmap.deepCopy()
         mainPath = Path(snapshot.paperPath)
         sketchBitmap = snapshot.sketchBitmap.deepCopy() ?: Bitmap.createBitmap(
             canvasWidth,
@@ -655,6 +655,60 @@ class PaperCutEngine {
         FoldMode.FIVE_POINT -> 360f / 10f
         FoldMode.EIGHT_POINT -> 360f / 16f
         FoldMode.NONE -> 360f
+    }
+
+    private fun enterFoldedState() {
+        if (canvasWidth == 0 || canvasHeight == 0) return
+        val wedge = createFoldWedgePath()
+        preFoldPaperPath = Path(mainPath)
+        preFoldSketchBitmap = sketchBitmap.deepCopy()
+        mainPath = Path(mainPath).apply {
+            op(wedge, Path.Op.INTERSECT)
+        }
+        sketchBitmap = clipBitmapToPath(preFoldSketchBitmap, wedge)
+            ?: Bitmap.createBitmap(canvasWidth, canvasHeight, Bitmap.Config.ARGB_8888)
+        sketchCanvas = Canvas(sketchBitmap!!)
+        foldedBasePath = Path(mainPath)
+        foldedBaseSketchBitmap = sketchBitmap.deepCopy()
+        isFolded = true
+        updatePaperRegion()
+    }
+
+    private fun createFoldWedgePath(): Path {
+        return Path().apply {
+            moveTo(centerX, centerY)
+            arcTo(paperBounds, -90f, getFoldSweepAngle())
+            close()
+        }
+    }
+
+    private fun expandPathByFoldSymmetry(path: Path, segments: Int): Path {
+        val mirroredPetal = Path().apply {
+            addPath(path)
+            val mirrorMatrix = Matrix().apply { postScale(-1f, 1f, centerX, centerY) }
+            addPath(path, mirrorMatrix)
+        }
+        val fullPath = Path()
+        val rotateMatrix = Matrix()
+        val angleStep = 360f / segments
+        repeat(segments) { index ->
+            rotateMatrix.reset()
+            rotateMatrix.postRotate(index * angleStep, centerX, centerY)
+            fullPath.addPath(mirroredPetal, rotateMatrix)
+        }
+        return fullPath
+    }
+
+    private fun clipBitmapToPath(sourceBitmap: Bitmap?, clipPath: Path): Bitmap? {
+        if (sourceBitmap == null) return null
+        val clippedBitmap = sourceBitmap.copy(Bitmap.Config.ARGB_8888, true)
+        val clippedCanvas = Canvas(clippedBitmap)
+        val outside = Path().apply {
+            addRect(0f, 0f, canvasWidth.toFloat(), canvasHeight.toFloat(), Path.Direction.CW)
+            op(clipPath, Path.Op.DIFFERENCE)
+        }
+        clippedCanvas.drawPath(outside, clearFillPaint)
+        return clippedBitmap
     }
 
     private fun applyPaperColor(color: Int) {
