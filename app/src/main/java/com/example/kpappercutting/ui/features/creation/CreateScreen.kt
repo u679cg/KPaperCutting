@@ -2,6 +2,7 @@ package com.example.kpappercutting.ui.features.creation
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
@@ -22,12 +23,15 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -53,6 +57,7 @@ import com.example.kpappercutting.data.model.PaperShape
 import com.example.kpappercutting.ui.features.creation.component.PaperCanvas
 import com.example.kpappercutting.ui.features.creation.engine.PaperCutEngine
 import com.example.kpappercutting.ui.theme.PaperRed
+import kotlin.math.roundToInt
 
 @Composable
 fun CreateScreen(
@@ -63,6 +68,7 @@ fun CreateScreen(
     onBack: () -> Unit = {}
 ) {
     var isColorPaletteVisible by rememberSaveable { mutableStateOf(false) }
+    var isEraserSliderVisible by rememberSaveable { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -85,7 +91,18 @@ fun CreateScreen(
             canRedo = uiState.canRedo,
             onUndo = { onAction(CreateUiAction.Undo) },
             onRedo = { onAction(CreateUiAction.Redo) },
-            onSelectTool = { onAction(CreateUiAction.SelectTool(it)) },
+            onSelectTool = {
+                isEraserSliderVisible = false
+                onAction(CreateUiAction.SelectTool(it))
+            },
+            onEraserToolClick = {
+                if (uiState.selectedTool == EditTool.ERASER) {
+                    isEraserSliderVisible = !isEraserSliderVisible
+                } else {
+                    isEraserSliderVisible = false
+                    onAction(CreateUiAction.SelectTool(EditTool.ERASER))
+                }
+            },
             isColorControlSelected = isColorPaletteVisible,
             onColorControlClick = { isColorPaletteVisible = !isColorPaletteVisible }
         )
@@ -103,6 +120,20 @@ fun CreateScreen(
                     .padding(bottom = 74.dp),
                 onAction = onAction
             )
+
+            androidx.compose.animation.AnimatedVisibility(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(top = 14.dp, start = 12.dp),
+                visible = uiState.selectedTool == EditTool.ERASER && isEraserSliderVisible,
+                enter = fadeIn() + slideInVertically(initialOffsetY = { -it / 2 }),
+                exit = fadeOut() + slideOutVertically(targetOffsetY = { -it / 3 })
+            ) {
+                EraserSizeSliderCard(
+                    selectedSize = uiState.selectedEraserSize,
+                    onSelectSize = { onAction(CreateUiAction.SelectEraserSize(it)) }
+                )
+            }
 
             androidx.compose.animation.AnimatedVisibility(
                 modifier = Modifier
@@ -269,6 +300,7 @@ private fun TopToolbar(
     onUndo: () -> Unit,
     onRedo: () -> Unit,
     onSelectTool: (EditTool) -> Unit,
+    onEraserToolClick: () -> Unit,
     isColorControlSelected: Boolean,
     onColorControlClick: () -> Unit
 ) {
@@ -318,7 +350,7 @@ private fun TopToolbar(
                 drawableRes = R.drawable.ic_eraser,
                 enabled = true,
                 selected = activeTool == EditTool.ERASER,
-                onClick = { onSelectTool(EditTool.ERASER) }
+                onClick = onEraserToolClick
             )
             Spacer(modifier = Modifier.weight(1f))
             ToolbarIcon(
@@ -379,6 +411,63 @@ private fun ColorPaperStrip(
                 )
                 if (index != paperColors.lastIndex) {
                     Spacer(modifier = Modifier.width(10.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EraserSizeSliderCard(
+    selectedSize: EraserSize,
+    onSelectSize: (EraserSize) -> Unit
+) {
+    val sliderValue = selectedSize.ordinal.toFloat()
+
+    Surface(
+        modifier = Modifier
+            .width(214.dp)
+            .shadow(8.dp, RoundedCornerShape(20.dp), clip = false),
+        shape = RoundedCornerShape(20.dp),
+        color = Color.White.copy(alpha = 0.96f)
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "橡皮大小",
+                color = Color(0xFF6A6A6A),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            Slider(
+                value = sliderValue,
+                onValueChange = { raw ->
+                    val index = raw.roundToInt().coerceIn(0, EraserSize.entries.lastIndex)
+                    onSelectSize(EraserSize.entries[index])
+                },
+                modifier = Modifier.width(180.dp),
+                valueRange = 0f..EraserSize.entries.lastIndex.toFloat(),
+                steps = EraserSize.entries.size - 2,
+                colors = SliderDefaults.colors(
+                    thumbColor = PaperRed,
+                    activeTrackColor = PaperRed,
+                    inactiveTrackColor = Color(0xFFE7E1DA)
+                )
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(modifier = Modifier.fillMaxWidth()) {
+                EraserSize.entries.forEach { size ->
+                    Text(
+                        text = size.label,
+                        modifier = Modifier.weight(1f),
+                        color = if (size == selectedSize) PaperRed else Color(0xFF9A9A9A),
+                        fontSize = 12.sp,
+                        fontWeight = if (size == selectedSize) FontWeight.SemiBold else FontWeight.Normal
+                    )
                 }
             }
         }

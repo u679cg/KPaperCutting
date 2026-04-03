@@ -21,6 +21,7 @@ class CreateViewModel : ViewModel() {
         when (action) {
             is CreateUiAction.SelectShape -> engine.setShape(action.shape)
             is CreateUiAction.SelectTool -> engine.setTool(action.tool)
+            is CreateUiAction.SelectEraserSize -> engine.setEraserSize(action.size)
             is CreateUiAction.SelectPaperColor -> engine.setPaperColor(action.color)
             is CreateUiAction.SelectFoldMode -> engine.selectFoldMode(action.mode)
             is CreateUiAction.StartStroke -> engine.startStroke(action.point)
@@ -48,6 +49,7 @@ class CreateViewModel : ViewModel() {
         uiState = CreateUiState(
             selectedShape = engine.selectedShape,
             selectedTool = engine.selectedTool,
+            selectedEraserSize = engine.selectedEraserSize,
             selectedPaperColor = engine.selectedPaperColor,
             foldMode = engine.foldMode,
             isFolded = engine.isFolded,

@@ -16,6 +16,7 @@ import androidx.compose.ui.geometry.Offset
 import com.example.kpappercutting.ui.features.creation.CreationPaperDefaults
 import com.example.kpappercutting.data.model.PaperShape
 import com.example.kpappercutting.ui.features.creation.EditTool
+import com.example.kpappercutting.ui.features.creation.EraserSize
 import com.example.kpappercutting.ui.features.creation.FoldMode
 import kotlin.math.roundToInt
 
@@ -105,6 +106,8 @@ class PaperCutEngine {
         private set
     var selectedTool: EditTool = EditTool.SCISSORS
         private set
+    var selectedEraserSize: EraserSize = EraserSize.MEDIUM
+        private set
     var selectedPaperColor: Int = CreationPaperDefaults.DEFAULT_PAPER_COLOR
         private set
     var foldMode: FoldMode = FoldMode.NONE
@@ -153,6 +156,14 @@ class PaperCutEngine {
         bumpRenderVersion()
     }
 
+    fun setEraserSize(size: EraserSize) {
+        if (selectedEraserSize == size) return
+        selectedEraserSize = size
+        eraserPaint.strokeWidth = size.strokeWidth
+        eraserPreviewPaint.strokeWidth = size.previewWidth
+        bumpRenderVersion()
+    }
+
     fun setPaperColor(color: Int) {
         if (selectedPaperColor == color) return
         selectedPaperColor = color
@@ -177,6 +188,9 @@ class PaperCutEngine {
     fun resetAll() {
         selectedTool = EditTool.SCISSORS
         selectedShape = PaperShape.CIRCLE
+        selectedEraserSize = EraserSize.MEDIUM
+        eraserPaint.strokeWidth = selectedEraserSize.strokeWidth
+        eraserPreviewPaint.strokeWidth = selectedEraserSize.previewWidth
         selectedPaperColor = CreationPaperDefaults.DEFAULT_PAPER_COLOR
         applyPaperColor(selectedPaperColor)
         foldMode = FoldMode.NONE

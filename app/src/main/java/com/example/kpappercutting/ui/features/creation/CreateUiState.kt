@@ -6,6 +6,7 @@ import com.example.kpappercutting.data.model.PaperShape
 data class CreateUiState(
     val selectedShape: PaperShape = PaperShape.SQUARE,
     val selectedTool: EditTool = EditTool.SCISSORS,
+    val selectedEraserSize: EraserSize = EraserSize.MEDIUM,
     val selectedPaperColor: Int = CreationPaperDefaults.DEFAULT_PAPER_COLOR,
     val foldMode: FoldMode = FoldMode.NONE,
     val isFolded: Boolean = false,
