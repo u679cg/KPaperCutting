@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,9 +34,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -115,7 +118,7 @@ fun CreateScreen(
                 engine = engine,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(bottom = 74.dp),
+                    .padding(bottom = 88.dp),
                 onAction = onAction
             )
 
@@ -149,18 +152,14 @@ fun CreateScreen(
                 )
             }
 
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 18.dp)
-            ) {
-                BottomActionBar(
-                    canExpand = uiState.canExpand,
-                    onClear = { onAction(CreateUiAction.ClearCanvas) },
-                    onTechnique = { isTechniquePanelVisible = true },
-                    onExpand = { onAction(CreateUiAction.ToggleFold) }
-                )
-            }
+            BottomActionBar(
+                canToggleFold = uiState.foldMode != FoldMode.NONE,
+                isFolded = uiState.isFolded,
+                onClear = { onAction(CreateUiAction.ClearCanvas) },
+                onTechnique = { isTechniquePanelVisible = true },
+                onExpand = { onAction(CreateUiAction.ToggleFold) },
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
 
             androidx.compose.animation.AnimatedVisibility(
                 visible = isTechniquePanelVisible,
@@ -311,12 +310,13 @@ private fun SimpleIconButton(
 
 @Composable
 private fun CreationBottomButton(
+    modifier: Modifier = Modifier,
+    compact: Boolean = false,
     onClick: () -> Unit
 ) {
     Surface(
-        modifier = Modifier
-            .width(220.dp)
-            .height(56.dp)
+        modifier = modifier
+            .height(if (compact) 52.dp else 56.dp)
             .shadow(4.dp, RoundedCornerShape(28.dp), clip = false)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(28.dp),
@@ -326,7 +326,7 @@ private fun CreationBottomButton(
             Text(
                 text = "选择剪纸技法",
                 color = Color(0xFF6C6C6C),
-                fontSize = 20.sp,
+                fontSize = if (compact) 18.sp else 20.sp,
                 fontWeight = FontWeight.Medium
             )
         }
@@ -335,27 +335,50 @@ private fun CreationBottomButton(
 
 @Composable
 private fun BottomActionBar(
-    canExpand: Boolean,
+    canToggleFold: Boolean,
+    isFolded: Boolean,
     onClear: () -> Unit,
     onTechnique: () -> Unit,
-    onExpand: () -> Unit
+    onExpand: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically
+    val configuration = LocalConfiguration.current
+    val compactLayout = remember(configuration.screenWidthDp) {
+        configuration.screenWidthDp.dp - 32.dp < 360.dp
+    }
+    val sideButtonSize = if (compactLayout) 52.dp else 56.dp
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 16.dp)
     ) {
-        CircleActionButton(
-            text = "清空",
-            enabled = true,
-            onClick = onClear
-        )
-        Spacer(modifier = Modifier.width(14.dp))
-        CreationBottomButton(onClick = onTechnique)
-        Spacer(modifier = Modifier.width(14.dp))
-        CircleActionButton(
-            text = "展开",
-            enabled = canExpand,
-            onClick = onExpand
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            CircleActionButton(
+                text = "清空",
+                enabled = true,
+                size = sideButtonSize,
+                onClick = onClear
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            CreationBottomButton(
+                modifier = Modifier
+                    .weight(1f)
+                    .widthIn(max = 220.dp),
+                compact = compactLayout,
+                onClick = onTechnique
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            CircleActionButton(
+                text = if (isFolded) "展开" else "折叠",
+                enabled = canToggleFold,
+                size = sideButtonSize,
+                onClick = onExpand
+            )
+        }
     }
 }
 
@@ -363,11 +386,12 @@ private fun BottomActionBar(
 private fun CircleActionButton(
     text: String,
     enabled: Boolean,
+    size: androidx.compose.ui.unit.Dp = 56.dp,
     onClick: () -> Unit
 ) {
     Surface(
         modifier = Modifier
-            .size(56.dp)
+            .size(size)
             .shadow(4.dp, CircleShape, clip = false)
             .clickable(enabled = enabled, onClick = onClick),
         shape = CircleShape,
@@ -377,7 +401,7 @@ private fun CircleActionButton(
             Text(
                 text = text,
                 color = if (enabled) Color(0xFF6C6C6C) else Color(0xFFBBB1A7),
-                fontSize = 13.sp,
+                fontSize = if (size < 56.dp) 12.sp else 13.sp,
                 fontWeight = FontWeight.Medium
             )
         }
