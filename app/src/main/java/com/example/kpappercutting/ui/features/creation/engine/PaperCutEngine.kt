@@ -504,6 +504,7 @@ class PaperCutEngine {
         preFoldSketchBitmap = null
         foldedBasePath = null
         foldedBaseSketchBitmap = null
+        updatePaperRegion()
         clipSketchToPaper()
         saveSnapshot()
     }
