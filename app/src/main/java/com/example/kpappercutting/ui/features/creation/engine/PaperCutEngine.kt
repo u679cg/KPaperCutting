@@ -116,7 +116,7 @@ class PaperCutEngine {
     private var foldedBasePath: Path? = null
     private var foldedBaseSketchBitmap: Bitmap? = null
 
-    var selectedShape: PaperShape = PaperShape.CIRCLE
+    var selectedShape: PaperShape = PaperShape.SQUARE
         private set
     var selectedTool: EditTool = EditTool.SCISSORS
         private set
@@ -197,7 +197,7 @@ class PaperCutEngine {
 
     fun resetAll() {
         selectedTool = EditTool.SCISSORS
-        selectedShape = PaperShape.CIRCLE
+        selectedShape = PaperShape.SQUARE
         selectedEraserSize = EraserSize.MEDIUM
         eraserPaint.strokeWidth = selectedEraserSize.strokeWidth
         eraserPreviewPaint.strokeWidth = selectedEraserSize.previewWidth

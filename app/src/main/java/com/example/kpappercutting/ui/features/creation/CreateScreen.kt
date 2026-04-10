@@ -84,7 +84,6 @@ fun CreateScreen(
             onBack = onBack,
             onShareClick = { onMenuAction(CreationMenuAction.EXPORT_TO_GALLERY) }
         )
-        Spacer(modifier = Modifier.height(8.dp))
         TopToolbar(
             activeTool = uiState.selectedTool,
             canUndo = uiState.canUndo,
@@ -193,10 +192,9 @@ private fun CreateHeader(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .width(170.dp)
-                .height(48.dp),
-//                .shadow(10.dp, RoundedCornerShape(20.dp), clip = false),
-            shape = RoundedCornerShape(24.dp),
-            color = Color(0xFFFDF8F2)
+                .height(36.dp),
+            shape = RoundedCornerShape(0.dp),
+            color = Color.Transparent
         ) {
             Row(
                 modifier = Modifier.fillMaxSize(),
@@ -240,12 +238,14 @@ private fun ModeTab(
 ) {
     Box(
         modifier = modifier
-            .padding(4.dp)
             .fillMaxHeight()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(8.dp,8.dp,0.dp,0.dp))
             .background(if (selected) Color.White else Color.Transparent)
-            .clickable(onClick = onClick),
-//            .shadow(if (selected) 4.dp else 0.dp, RoundedCornerShape(20.dp), clip = false),
+            .clickable(onClick = onClick)
+            .shadow(
+                if (selected) 0.2.dp else 0.dp,
+                RoundedCornerShape(8.dp,8.dp,0.dp,0.dp),
+                clip = false),
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -371,8 +371,13 @@ private fun TopToolbar(
         modifier = Modifier
             .fillMaxWidth()
             .height(42.dp)
-            .padding(horizontal = 2.dp),
-        shape = RoundedCornerShape(21.dp),
+            .padding(horizontal = 2.dp)
+            .shadow(
+                elevation = 1.dp,
+                shape = RoundedCornerShape(8.dp),
+                clip = false   // 
+            ),
+        shape = RoundedCornerShape(8.dp),
         color = Color.White
     ) {
         Row(
