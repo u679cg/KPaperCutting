@@ -408,7 +408,7 @@ class PaperCutEngine {
     fun render(canvas: Canvas) {
         if (canvasWidth == 0 || canvasHeight == 0) return
         canvas.save()
-        canvas.concat(transformMatrix)
+        canvas.concat(currentDisplayMatrix())
         drawPaperContent(canvas, mainPath)
         sketchBitmap?.let { canvas.drawBitmap(it, 0f, 0f, null) }
         if (!drawingPath.isEmpty) {
@@ -643,9 +643,25 @@ class PaperCutEngine {
 
     private fun mapPointToCanvas(point: Offset): Offset {
         val values = floatArrayOf(point.x, point.y)
-        transformMatrix.invert(inverseMatrix)
+        currentDisplayMatrix().invert(inverseMatrix)
         inverseMatrix.mapPoints(values)
         return Offset(values[0], values[1])
+    }
+
+    private fun currentDisplayMatrix(): Matrix {
+        return Matrix(transformMatrix).apply {
+            if (isFolded && foldMode != FoldMode.NONE) {
+                // Only the folded display is rotated so the sector axis aligns with the
+                // screen midline x = screenWidth / 2. The model geometry stays in the
+                // original fold basis, which preserves correct expand/cut correspondence.
+                postRotate(getFoldedDisplayRotation(), centerX, centerY)
+            }
+        }
+    }
+
+    private fun getFoldedDisplayRotation(): Float {
+        if (!isFolded || foldMode == FoldMode.NONE) return 0f
+        return -(getFoldSweepAngle() / 2f)
     }
 
     private fun resetTransform() {
