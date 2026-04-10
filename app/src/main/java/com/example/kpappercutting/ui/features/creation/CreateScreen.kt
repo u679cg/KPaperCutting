@@ -4,7 +4,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,13 +12,11 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.animation.core.animateDpAsState
@@ -57,7 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.kpappercutting.R
 import com.example.kpappercutting.data.model.PaperShape
-import com.example.kpappercutting.ui.features.creation.component.FoldTechniqueRadialLauncher
+import com.example.kpappercutting.ui.features.creation.component.FoldTechniqueWheelSelector
 import com.example.kpappercutting.ui.features.creation.component.PaperCanvas
 import com.example.kpappercutting.ui.features.creation.engine.PaperCutEngine
 import com.example.kpappercutting.ui.theme.PaperRed
@@ -73,7 +70,6 @@ fun CreateScreen(
 ) {
     var isColorPaletteVisible by rememberSaveable { mutableStateOf(false) }
     var isEraserSliderVisible by rememberSaveable { mutableStateOf(false) }
-    var isTechniquePanelVisible by rememberSaveable { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -122,7 +118,7 @@ fun CreateScreen(
                 engine = engine,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(bottom = 88.dp),
+                    .padding(bottom = 96.dp),
                 onAction = onAction
             )
 
@@ -162,41 +158,10 @@ fun CreateScreen(
                 currentFoldMode = uiState.foldMode,
                 availableFoldModes = uiState.availableFoldModes,
                 onClear = { onAction(CreateUiAction.ClearCanvas) },
-                onTechnique = { isTechniquePanelVisible = true },
                 onSelectFoldMode = { onAction(CreateUiAction.SelectFoldMode(it)) },
                 onExpand = { onAction(CreateUiAction.ToggleFold) },
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
-
-            androidx.compose.animation.AnimatedVisibility(
-                visible = isTechniquePanelVisible,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.22f))
-                        .clickable { isTechniquePanelVisible = false }
-                )
-            }
-
-            androidx.compose.animation.AnimatedVisibility(
-                modifier = Modifier.align(Alignment.BottomCenter),
-                visible = isTechniquePanelVisible,
-                enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
-                exit = fadeOut() + slideOutVertically(targetOffsetY = { it })
-            ) {
-                TechniqueBottomPanel(
-                    currentMode = uiState.foldMode,
-                    availableModes = uiState.availableFoldModes,
-                    onDismiss = { isTechniquePanelVisible = false },
-                    onSelectMode = { mode ->
-                        onAction(CreateUiAction.SelectFoldMode(mode))
-                        isTechniquePanelVisible = false
-                    }
-                )
-            }
         }
     }
 }
@@ -317,7 +282,6 @@ private fun BottomActionBar(
     currentFoldMode: FoldMode,
     availableFoldModes: List<FoldMode>,
     onClear: () -> Unit,
-    onTechnique: () -> Unit,
     onSelectFoldMode: (FoldMode) -> Unit,
     onExpand: () -> Unit,
     modifier: Modifier = Modifier
@@ -327,6 +291,8 @@ private fun BottomActionBar(
         configuration.screenWidthDp.dp - 32.dp < 360.dp
     }
     val sideButtonSize = if (compactLayout) 52.dp else 56.dp
+    val selectorWidth = if (compactLayout) 200.dp else 240.dp
+    val selectorHeight = if (compactLayout) 56.dp else 60.dp
 
     Box(
         modifier = modifier
@@ -344,14 +310,13 @@ private fun BottomActionBar(
                 onClick = onClear
             )
             Spacer(modifier = Modifier.width(12.dp))
-            FoldTechniqueRadialLauncher(
+            FoldTechniqueWheelSelector(
                 modifier = Modifier
-                    .weight(1f)
-                    .widthIn(max = 220.dp),
+                    .width(selectorWidth)
+                    .height(selectorHeight),
                 compact = compactLayout,
                 currentMode = currentFoldMode,
                 availableModes = availableFoldModes,
-                onTap = onTechnique,
                 onModeSelected = onSelectFoldMode
             )
             Spacer(modifier = Modifier.width(12.dp))
@@ -387,131 +352,6 @@ private fun CircleActionButton(
                 fontSize = if (size < 56.dp) 12.sp else 13.sp,
                 fontWeight = FontWeight.Medium
             )
-        }
-    }
-}
-
-@Composable
-private fun TechniqueBottomPanel(
-    currentMode: FoldMode,
-    availableModes: List<FoldMode>,
-    onDismiss: () -> Unit,
-    onSelectMode: (FoldMode) -> Unit
-) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(18.dp, RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), clip = false),
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-        color = Color(0xFFFFFBF6)
-    ) {
-        BoxWithConstraints {
-            val panelMaxHeight = maxHeight * 0.76f
-            Column(
-                modifier = Modifier
-                    .heightIn(max = panelMaxHeight)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp, vertical = 18.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.CenterHorizontally)
-                        .width(44.dp)
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(999.dp))
-                        .background(Color(0xFFD9D0C6))
-                )
-                Spacer(modifier = Modifier.height(14.dp))
-                Text(
-                    text = "选择剪纸技法",
-                    color = Color(0xFF2F2F2F),
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(modifier = Modifier.height(14.dp))
-                val selectableSpecs = FoldCatalog.specsForSelection()
-                    .filter { it.mode in availableModes }
-                selectableSpecs.forEachIndexed { index, spec ->
-                    TechniqueOptionCard(
-                        title = spec.displayName,
-                        subtitle = buildTechniqueSubtitle(spec),
-                        selected = currentMode == spec.mode,
-                        enabled = true,
-                        onClick = { onSelectMode(spec.mode) }
-                    )
-                    if (index != selectableSpecs.lastIndex) {
-                        Spacer(modifier = Modifier.height(10.dp))
-                    }
-                }
-                Spacer(modifier = Modifier.height(14.dp))
-                Text(
-                    text = "暂不选择",
-                    modifier = Modifier
-                        .align(Alignment.CenterHorizontally)
-                        .clickable(onClick = onDismiss),
-                    color = Color(0xFF8D857C),
-                    fontSize = 14.sp
-                )
-            }
-        }
-    }
-}
-
-private fun buildTechniqueSubtitle(spec: FoldSpec): String {
-    val alias = spec.legacyNames.firstOrNull()?.let { "，兼容旧名“$it”" }.orEmpty()
-    return "${spec.description}，${spec.baseUnitAngle}° 基础单元$alias"
-}
-
-@Composable
-private fun TechniqueOptionCard(
-    title: String,
-    subtitle: String,
-    selected: Boolean,
-    enabled: Boolean,
-    onClick: () -> Unit
-) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = enabled, onClick = onClick),
-        shape = RoundedCornerShape(22.dp),
-        color = when {
-            selected -> Color(0xFFFCF0E1)
-            enabled -> Color.White
-            else -> Color(0xFFF2ECE5)
-        }
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(16.dp)
-                    .clip(CircleShape)
-                    .background(
-                        when {
-                            selected -> PaperRed
-                            enabled -> Color(0xFFE3DBD1)
-                            else -> Color(0xFFE9E2D9)
-                        }
-                    )
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    color = if (enabled) Color(0xFF2E2E2E) else Color(0xFFABA39A),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = subtitle,
-                    color = if (enabled) Color(0xFF847A70) else Color(0xFFC0B7AE),
-                    fontSize = 12.sp
-                )
-            }
         }
     }
 }
