@@ -128,7 +128,7 @@ object FoldCatalog {
         ),
         FoldMode.TWELVE_PART to FoldSpec(
             mode = FoldMode.TWELVE_PART,
-            displayName = "十二分法",
+            displayName = "十二分",
             legacyNames = emptyList(),
             segmentCount = 12,
             baseUnitAngle = 15f,
@@ -140,7 +140,7 @@ object FoldCatalog {
         ),
         FoldMode.EIGHT_POINT to FoldSpec(
             mode = FoldMode.EIGHT_POINT,
-            displayName = "十六分法",
+            displayName = "十六分",
             legacyNames = listOf("八角折法"),
             segmentCount = 16,
             baseUnitAngle = 22.5f,

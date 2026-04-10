@@ -14,8 +14,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -26,7 +26,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -58,10 +57,19 @@ fun FoldTechniqueWheelSelector(
     val selectableSpecs = remember(availableModes) {
         FoldCatalog.specsForSelection().filter { it.mode in availableModes }
     }
+    val cycleSize = selectableSpecs.size.coerceAtLeast(1)
+    val virtualCount = Int.MAX_VALUE
+    val middleAnchor = remember(cycleSize) {
+        val midpoint = virtualCount / 2
+        midpoint - midpoint.floorMod(cycleSize)
+    }
     val selectedIndex = remember(currentMode, selectableSpecs) {
         selectableSpecs.indexOfFirst { it.mode == currentMode }.coerceAtLeast(0)
     }
-    val listState = rememberLazyListState(initialFirstVisibleItemIndex = selectedIndex)
+    val initialIndex = remember(selectedIndex, middleAnchor) {
+        middleAnchor + selectedIndex
+    }
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
     val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
     val coroutineScope = rememberCoroutineScope()
 
@@ -71,20 +79,29 @@ fun FoldTechniqueWheelSelector(
         val itemWidth = if (compact) 70.dp else 78.dp
         val edgePadding = ((maxWidth - itemWidth) / 2).coerceAtLeast(0.dp)
 
-        LaunchedEffect(selectedIndex) {
-            val centered = listState.findCenteredItemIndex()
-            if (centered != selectedIndex && !listState.isScrollInProgress) {
-                listState.animateScrollToItem(selectedIndex)
+        LaunchedEffect(selectedIndex, cycleSize) {
+            if (selectableSpecs.isEmpty()) return@LaunchedEffect
+            val centeredRawIndex = listState.findCenteredItemIndex()
+            val targetIndex = nearestVirtualIndex(
+                currentIndex = centeredRawIndex,
+                cycleSize = cycleSize,
+                targetModulo = selectedIndex
+            )
+            if (centeredRawIndex != targetIndex && !listState.isScrollInProgress) {
+                listState.animateScrollToItem(targetIndex)
             }
         }
 
-        LaunchedEffect(listState, selectableSpecs, currentMode) {
+        LaunchedEffect(listState, selectableSpecs, currentMode, cycleSize) {
+            if (selectableSpecs.isEmpty()) return@LaunchedEffect
             snapshotFlow { listState.isScrollInProgress to listState.findCenteredItemIndex() }
-                .map { (scrolling, index) -> if (!scrolling) index else -1 }
-                .filter { it in selectableSpecs.indices }
+                .map { (scrolling, rawIndex) ->
+                    if (!scrolling) rawIndex.floorMod(cycleSize) else -1
+                }
+                .filter { it in 0 until cycleSize }
                 .distinctUntilChanged()
-                .collect { index ->
-                    val mode = selectableSpecs[index].mode
+                .collect { realIndex ->
+                    val mode = selectableSpecs[realIndex].mode
                     if (mode != currentMode) {
                         onModeSelected(mode)
                     }
@@ -114,12 +131,6 @@ fun FoldTechniqueWheelSelector(
                                     1f to Color.White
                                 )
                             )
-                            drawLine(
-                                color = PaperRed.copy(alpha = 0.28f),
-                                start = Offset(size.width / 2f, size.height * 0.2f),
-                                end = Offset(size.width / 2f, size.height * 0.8f),
-                                strokeWidth = 2.dp.toPx()
-                            )
                         }
                     },
                 contentAlignment = Alignment.Center
@@ -133,20 +144,22 @@ fun FoldTechniqueWheelSelector(
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = edgePadding),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    itemsIndexed(
-                        items = selectableSpecs,
-                        key = { _, spec -> spec.mode.name }
-                    ) { index, spec ->
-                        val emphasis = listState.itemEmphasis(index)
+                    items(
+                        count = virtualCount,
+                        key = { it }
+                    ) { virtualIndex ->
+                        val realIndex = virtualIndex.floorMod(cycleSize)
+                        val spec = selectableSpecs[realIndex]
+                        val emphasis = listState.itemEmphasis(virtualIndex)
                         val scale by animateFloatAsState(
                             targetValue = lerp(0.84f, 1.14f, emphasis),
                             animationSpec = spring(stiffness = 420f, dampingRatio = 0.86f),
-                            label = "fold_scale_$index"
+                            label = "fold_scale_$virtualIndex"
                         )
                         val alpha by animateFloatAsState(
                             targetValue = lerp(0.34f, 1f, emphasis),
                             animationSpec = spring(stiffness = 420f, dampingRatio = 0.9f),
-                            label = "fold_alpha_$index"
+                            label = "fold_alpha_$virtualIndex"
                         )
 
                         Box(
@@ -159,9 +172,14 @@ fun FoldTechniqueWheelSelector(
                                     this.alpha = alpha
                                 }
                                 .clickable {
-                                    if (index != listState.findCenteredItemIndex()) {
+                                    val targetIndex = nearestVirtualIndex(
+                                        currentIndex = listState.findCenteredItemIndex(),
+                                        cycleSize = cycleSize,
+                                        targetModulo = realIndex
+                                    )
+                                    if (targetIndex != listState.findCenteredItemIndex()) {
                                         coroutineScope.launch {
-                                            listState.animateScrollToItem(index)
+                                            listState.animateScrollToItem(targetIndex)
                                         }
                                     } else {
                                         onModeSelected(spec.mode)
@@ -202,6 +220,24 @@ private fun androidx.compose.foundation.lazy.LazyListState.itemEmphasis(index: I
     val distance = abs(itemCenter - viewportCenter)
     val maxDistance = (layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset) / 2f
     return (1f - (distance / maxDistance)).coerceIn(0f, 1f)
+}
+
+private fun nearestVirtualIndex(
+    currentIndex: Int,
+    cycleSize: Int,
+    targetModulo: Int
+): Int {
+    val currentBase = currentIndex - currentIndex.floorMod(cycleSize)
+    val candidates = listOf(
+        currentBase + targetModulo,
+        currentBase + targetModulo + cycleSize,
+        currentBase + targetModulo - cycleSize
+    )
+    return candidates.minByOrNull { abs(it - currentIndex) } ?: (currentBase + targetModulo)
+}
+
+private fun Int.floorMod(other: Int): Int {
+    return ((this % other) + other) % other
 }
 
 private fun lerp(start: Float, stop: Float, fraction: Float): Float {

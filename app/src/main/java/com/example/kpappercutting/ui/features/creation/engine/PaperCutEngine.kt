@@ -124,7 +124,7 @@ class PaperCutEngine {
         private set
     var selectedPaperColor: Int = CreationPaperDefaults.DEFAULT_PAPER_COLOR
         private set
-    var foldMode: FoldMode = FoldMode.NONE
+    var foldMode: FoldMode = FoldMode.SIX_PART
         private set
     var isFolded: Boolean = false
         private set
@@ -203,7 +203,7 @@ class PaperCutEngine {
         eraserPreviewPaint.strokeWidth = selectedEraserSize.previewWidth
         selectedPaperColor = CreationPaperDefaults.DEFAULT_PAPER_COLOR
         applyPaperColor(selectedPaperColor)
-        foldMode = FoldMode.NONE
+        foldMode = FoldMode.SIX_PART
         isFolded = false
         preFoldPaperPath = null
         preFoldSketchBitmap = null

@@ -8,7 +8,7 @@ data class CreateUiState(
     val selectedTool: EditTool = EditTool.SCISSORS,
     val selectedEraserSize: EraserSize = EraserSize.MEDIUM,
     val selectedPaperColor: Int = CreationPaperDefaults.DEFAULT_PAPER_COLOR,
-    val foldMode: FoldMode = FoldMode.NONE,
+    val foldMode: FoldMode = FoldMode.SIX_PART,
     val availableFoldModes: List<FoldMode> = FoldCatalog.selectableModes,
     val isFolded: Boolean = false,
     val canUndo: Boolean = false,
