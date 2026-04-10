@@ -649,19 +649,52 @@ class PaperCutEngine {
     }
 
     private fun currentDisplayMatrix(): Matrix {
-        return Matrix(transformMatrix).apply {
-            if (isFolded && foldMode != FoldMode.NONE) {
-                // Only the folded display is rotated so the sector axis aligns with the
-                // screen midline x = screenWidth / 2. The model geometry stays in the
-                // original fold basis, which preserves correct expand/cut correspondence.
-                postRotate(getFoldedDisplayRotation(), centerX, centerY)
+        return if (isFolded && foldMode != FoldMode.NONE) {
+            createFoldedDisplayBaseMatrix().apply {
+                // User gestures are concatenated after the folded display transform so
+                // pinch-pan sensitivity stays consistent with the pre-enlargement behavior.
+                postConcat(transformMatrix)
             }
+        } else {
+            Matrix(transformMatrix)
         }
     }
 
     private fun getFoldedDisplayRotation(): Float {
         if (!isFolded || foldMode == FoldMode.NONE) return 0f
         return -(getFoldSweepAngle() / 2f)
+    }
+
+    private fun createFoldedDisplayBaseMatrix(): Matrix {
+        val foldedDisplayMatrix = Matrix().apply {
+            // Two-part and four-part folds use a smaller default folded display size;
+            // all other fold modes keep the current enlarged presentation.
+            postScale(getFoldedDisplayScale(), getFoldedDisplayScale(), centerX, centerY)
+            // Align the folded sector axis with the screen vertical midline.
+            postRotate(getFoldedDisplayRotation(), centerX, centerY)
+        }
+
+        val displayBounds = RectF()
+        Path(mainPath).apply {
+            transform(foldedDisplayMatrix)
+            computeBounds(displayBounds, true)
+        }
+
+        // Keep the enlarged folded sector centered inside the canvas area, which is the
+        // region directly below the toolbar on every device size.
+        foldedDisplayMatrix.postTranslate(
+            centerX - displayBounds.centerX(),
+            centerY - displayBounds.centerY()
+        )
+        return foldedDisplayMatrix
+    }
+
+    private fun getFoldedDisplayScale(): Float {
+        return when (foldMode) {
+            FoldMode.TWO_PART -> 1.5f
+            FoldMode.FOUR_PART -> 2f
+            else -> 3f
+        }
     }
 
     private fun resetTransform() {
