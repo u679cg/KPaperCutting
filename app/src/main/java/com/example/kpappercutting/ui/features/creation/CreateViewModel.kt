@@ -52,12 +52,11 @@ class CreateViewModel : ViewModel() {
             selectedEraserSize = engine.selectedEraserSize,
             selectedPaperColor = engine.selectedPaperColor,
             foldMode = engine.foldMode,
+            availableFoldModes = engine.availableFoldModes,
             isFolded = engine.isFolded,
             canUndo = engine.canUndo,
             canRedo = engine.canRedo,
             canExpand = engine.canExpand,
-            canSelectFiveFold = engine.canSelectFiveFold,
-            canSelectEightFold = engine.canSelectEightFold,
             renderVersion = engine.renderVersion
         )
     }

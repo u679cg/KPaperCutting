@@ -4,6 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,11 +13,13 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.animation.core.animateDpAsState
@@ -54,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.kpappercutting.R
 import com.example.kpappercutting.data.model.PaperShape
+import com.example.kpappercutting.ui.features.creation.component.FoldTechniqueRadialLauncher
 import com.example.kpappercutting.ui.features.creation.component.PaperCanvas
 import com.example.kpappercutting.ui.features.creation.engine.PaperCutEngine
 import com.example.kpappercutting.ui.theme.PaperRed
@@ -155,8 +159,11 @@ fun CreateScreen(
             BottomActionBar(
                 canToggleFold = uiState.foldMode != FoldMode.NONE,
                 isFolded = uiState.isFolded,
+                currentFoldMode = uiState.foldMode,
+                availableFoldModes = uiState.availableFoldModes,
                 onClear = { onAction(CreateUiAction.ClearCanvas) },
                 onTechnique = { isTechniquePanelVisible = true },
+                onSelectFoldMode = { onAction(CreateUiAction.SelectFoldMode(it)) },
                 onExpand = { onAction(CreateUiAction.ToggleFold) },
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
@@ -182,15 +189,10 @@ fun CreateScreen(
             ) {
                 TechniqueBottomPanel(
                     currentMode = uiState.foldMode,
-                    canSelectFiveFold = uiState.canSelectFiveFold,
-                    canSelectEightFold = uiState.canSelectEightFold,
+                    availableModes = uiState.availableFoldModes,
                     onDismiss = { isTechniquePanelVisible = false },
-                    onSelectFiveFold = {
-                        onAction(CreateUiAction.SelectFoldMode(FoldMode.FIVE_POINT))
-                        isTechniquePanelVisible = false
-                    },
-                    onSelectEightFold = {
-                        onAction(CreateUiAction.SelectFoldMode(FoldMode.EIGHT_POINT))
+                    onSelectMode = { mode ->
+                        onAction(CreateUiAction.SelectFoldMode(mode))
                         isTechniquePanelVisible = false
                     }
                 )
@@ -309,36 +311,14 @@ private fun SimpleIconButton(
 }
 
 @Composable
-private fun CreationBottomButton(
-    modifier: Modifier = Modifier,
-    compact: Boolean = false,
-    onClick: () -> Unit
-) {
-    Surface(
-        modifier = modifier
-            .height(if (compact) 52.dp else 56.dp)
-            .shadow(4.dp, RoundedCornerShape(28.dp), clip = false)
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(28.dp),
-        color = Color.White
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Text(
-                text = "选择剪纸技法",
-                color = Color(0xFF6C6C6C),
-                fontSize = if (compact) 18.sp else 20.sp,
-                fontWeight = FontWeight.Medium
-            )
-        }
-    }
-}
-
-@Composable
 private fun BottomActionBar(
     canToggleFold: Boolean,
     isFolded: Boolean,
+    currentFoldMode: FoldMode,
+    availableFoldModes: List<FoldMode>,
     onClear: () -> Unit,
     onTechnique: () -> Unit,
+    onSelectFoldMode: (FoldMode) -> Unit,
     onExpand: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -364,12 +344,15 @@ private fun BottomActionBar(
                 onClick = onClear
             )
             Spacer(modifier = Modifier.width(12.dp))
-            CreationBottomButton(
+            FoldTechniqueRadialLauncher(
                 modifier = Modifier
                     .weight(1f)
                     .widthIn(max = 220.dp),
                 compact = compactLayout,
-                onClick = onTechnique
+                currentMode = currentFoldMode,
+                availableModes = availableFoldModes,
+                onTap = onTechnique,
+                onModeSelected = onSelectFoldMode
             )
             Spacer(modifier = Modifier.width(12.dp))
             CircleActionButton(
@@ -411,11 +394,9 @@ private fun CircleActionButton(
 @Composable
 private fun TechniqueBottomPanel(
     currentMode: FoldMode,
-    canSelectFiveFold: Boolean,
-    canSelectEightFold: Boolean,
+    availableModes: List<FoldMode>,
     onDismiss: () -> Unit,
-    onSelectFiveFold: () -> Unit,
-    onSelectEightFold: () -> Unit
+    onSelectMode: (FoldMode) -> Unit
 ) {
     Surface(
         modifier = Modifier
@@ -424,51 +405,61 @@ private fun TechniqueBottomPanel(
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         color = Color(0xFFFFFBF6)
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp)
-        ) {
-            Box(
+        BoxWithConstraints {
+            val panelMaxHeight = maxHeight * 0.76f
+            Column(
                 modifier = Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .width(44.dp)
-                    .height(4.dp)
-                    .clip(RoundedCornerShape(999.dp))
-                    .background(Color(0xFFD9D0C6))
-            )
-            Spacer(modifier = Modifier.height(14.dp))
-            Text(
-                text = "选择剪纸技法",
-                color = Color(0xFF2F2F2F),
-                fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-            Spacer(modifier = Modifier.height(14.dp))
-            TechniqueOptionCard(
-                title = "五角折法",
-                subtitle = "折成五角扇面，适合星纹和花瓣结构",
-                selected = currentMode == FoldMode.FIVE_POINT,
-                enabled = canSelectFiveFold,
-                onClick = onSelectFiveFold
-            )
-            Spacer(modifier = Modifier.height(10.dp))
-            TechniqueOptionCard(
-                title = "八角折法",
-                subtitle = "折成八角扇面，适合雪花和密集对称纹样",
-                selected = currentMode == FoldMode.EIGHT_POINT,
-                enabled = canSelectEightFold,
-                onClick = onSelectEightFold
-            )
-            Spacer(modifier = Modifier.height(14.dp))
-            Text(
-                text = "暂不选择",
-                modifier = Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .clickable(onClick = onDismiss),
-                color = Color(0xFF8D857C),
-                fontSize = 14.sp
-            )
+                    .heightIn(max = panelMaxHeight)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp, vertical = 18.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .width(44.dp)
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(Color(0xFFD9D0C6))
+                )
+                Spacer(modifier = Modifier.height(14.dp))
+                Text(
+                    text = "选择剪纸技法",
+                    color = Color(0xFF2F2F2F),
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(modifier = Modifier.height(14.dp))
+                val selectableSpecs = FoldCatalog.specsForSelection()
+                    .filter { it.mode in availableModes }
+                selectableSpecs.forEachIndexed { index, spec ->
+                    TechniqueOptionCard(
+                        title = spec.displayName,
+                        subtitle = buildTechniqueSubtitle(spec),
+                        selected = currentMode == spec.mode,
+                        enabled = true,
+                        onClick = { onSelectMode(spec.mode) }
+                    )
+                    if (index != selectableSpecs.lastIndex) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                    }
+                }
+                Spacer(modifier = Modifier.height(14.dp))
+                Text(
+                    text = "暂不选择",
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .clickable(onClick = onDismiss),
+                    color = Color(0xFF8D857C),
+                    fontSize = 14.sp
+                )
+            }
         }
     }
+}
+
+private fun buildTechniqueSubtitle(spec: FoldSpec): String {
+    val alias = spec.legacyNames.firstOrNull()?.let { "，兼容旧名“$it”" }.orEmpty()
+    return "${spec.description}，${spec.baseUnitAngle}° 基础单元$alias"
 }
 
 @Composable

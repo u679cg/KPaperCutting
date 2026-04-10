@@ -17,7 +17,10 @@ import com.example.kpappercutting.ui.features.creation.CreationPaperDefaults
 import com.example.kpappercutting.data.model.PaperShape
 import com.example.kpappercutting.ui.features.creation.EditTool
 import com.example.kpappercutting.ui.features.creation.EraserSize
+import com.example.kpappercutting.ui.features.creation.FoldCatalog
+import com.example.kpappercutting.ui.features.creation.FoldGeometry
 import com.example.kpappercutting.ui.features.creation.FoldMode
+import com.example.kpappercutting.ui.features.creation.spec
 import kotlin.math.roundToInt
 
 class PaperCutEngine {
@@ -138,11 +141,8 @@ class PaperCutEngine {
     val canExpand: Boolean
         get() = foldMode != FoldMode.NONE && isFolded
 
-    val canSelectFiveFold: Boolean
-        get() = foldMode == FoldMode.NONE || foldMode == FoldMode.FIVE_POINT
-
-    val canSelectEightFold: Boolean
-        get() = foldMode == FoldMode.NONE || foldMode == FoldMode.EIGHT_POINT
+    val availableFoldModes: List<FoldMode>
+        get() = FoldCatalog.selectableModes
 
     fun attachSize(width: Int, height: Int) {
         if (width <= 0 || height <= 0) return
@@ -229,7 +229,8 @@ class PaperCutEngine {
     }
 
     fun selectFoldMode(mode: FoldMode) {
-        if (canvasWidth == 0 || canvasHeight == 0) return
+        if (canvasWidth == 0 || canvasHeight == 0 || mode == FoldMode.NONE) return
+
         when {
             foldMode == FoldMode.NONE -> {
                 foldMode = mode
@@ -238,9 +239,21 @@ class PaperCutEngine {
                 saveSnapshot()
                 bumpRenderVersion()
             }
+
             foldMode == mode && !isFolded -> {
                 foldLogic()
                 resetTransform()
+                bumpRenderVersion()
+            }
+
+            foldMode != mode -> {
+                if (isFolded) {
+                    unfoldLogic(saveSnapshotAfterRestore = false)
+                }
+                foldMode = mode
+                enterFoldedState()
+                resetTransform()
+                saveSnapshot()
                 bumpRenderVersion()
             }
         }
@@ -473,13 +486,8 @@ class PaperCutEngine {
         saveSnapshot()
     }
 
-    private fun unfoldLogic() {
-        val segments = when (foldMode) {
-            FoldMode.FIVE_POINT -> 5
-            FoldMode.EIGHT_POINT -> 8
-            FoldMode.NONE -> return
-        }
-
+    private fun unfoldLogic(saveSnapshotAfterRestore: Boolean = true) {
+        val geometry = currentFoldGeometry() ?: return
         val basePath = preFoldPaperPath
         val baseFoldedPath = foldedBasePath
         if (basePath == null || baseFoldedPath == null) {
@@ -490,7 +498,10 @@ class PaperCutEngine {
         val foldedRemovedArea = Path(baseFoldedPath).apply {
             op(mainPath, Path.Op.DIFFERENCE)
         }
-        val expandedRemovedArea = expandPathByFoldSymmetry(foldedRemovedArea, segments)
+        val expandedRemovedArea = expandPathByFoldSymmetry(
+            path = foldedRemovedArea,
+            geometry = geometry
+        )
         mainPath = Path(basePath).apply {
             op(expandedRemovedArea, Path.Op.DIFFERENCE)
         }
@@ -506,7 +517,9 @@ class PaperCutEngine {
         foldedBaseSketchBitmap = null
         updatePaperRegion()
         clipSketchToPaper()
-        saveSnapshot()
+        if (saveSnapshotAfterRestore) {
+            saveSnapshot()
+        }
     }
 
     private fun saveSnapshot() {
@@ -652,10 +665,8 @@ class PaperCutEngine {
         }
     }
 
-    private fun getFoldSweepAngle(): Float = when (foldMode) {
-        FoldMode.FIVE_POINT -> 360f / 10f
-        FoldMode.EIGHT_POINT -> 360f / 16f
-        FoldMode.NONE -> 360f
+    private fun getFoldSweepAngle(): Float {
+        return currentFoldGeometry()?.wedgeSweepAngle ?: 360f
     }
 
     private fun enterFoldedState() {
@@ -683,21 +694,27 @@ class PaperCutEngine {
         }
     }
 
-    private fun expandPathByFoldSymmetry(path: Path, segments: Int): Path {
-        val mirroredPetal = Path().apply {
+    private fun expandPathByFoldSymmetry(path: Path, geometry: FoldGeometry): Path {
+        val foldedUnit = Path().apply {
             addPath(path)
-            val mirrorMatrix = Matrix().apply { postScale(-1f, 1f, centerX, centerY) }
-            addPath(path, mirrorMatrix)
+            if (geometry.mirrorEnabled) {
+                val mirrorMatrix = Matrix().apply { postScale(-1f, 1f, centerX, centerY) }
+                addPath(path, mirrorMatrix)
+            }
         }
         val fullPath = Path()
         val rotateMatrix = Matrix()
-        val angleStep = 360f / segments
-        repeat(segments) { index ->
+        repeat(geometry.rotationCopies) { index ->
             rotateMatrix.reset()
-            rotateMatrix.postRotate(index * angleStep, centerX, centerY)
-            fullPath.addPath(mirroredPetal, rotateMatrix)
+            rotateMatrix.postRotate(index * geometry.rotationStepAngle, centerX, centerY)
+            fullPath.addPath(foldedUnit, rotateMatrix)
         }
         return fullPath
+    }
+
+    private fun currentFoldGeometry(): FoldGeometry? {
+        if (foldMode == FoldMode.NONE) return null
+        return foldMode.spec.geometry
     }
 
     private fun clipBitmapToPath(sourceBitmap: Bitmap?, clipPath: Path): Bitmap? {

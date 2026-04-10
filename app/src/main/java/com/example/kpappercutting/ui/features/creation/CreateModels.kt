@@ -29,9 +29,3 @@ enum class CreationMenuAction {
     EXPORT_TO_GALLERY,
     PUBLISH_TO_COMMUNITY
 }
-
-enum class FoldMode {
-    NONE,
-    FIVE_POINT,
-    EIGHT_POINT
-}

@@ -9,11 +9,10 @@ data class CreateUiState(
     val selectedEraserSize: EraserSize = EraserSize.MEDIUM,
     val selectedPaperColor: Int = CreationPaperDefaults.DEFAULT_PAPER_COLOR,
     val foldMode: FoldMode = FoldMode.NONE,
+    val availableFoldModes: List<FoldMode> = FoldCatalog.selectableModes,
     val isFolded: Boolean = false,
     val canUndo: Boolean = false,
     val canRedo: Boolean = false,
     val canExpand: Boolean = false,
-    val canSelectFiveFold: Boolean = true,
-    val canSelectEightFold: Boolean = true,
     val renderVersion: Int = 0
 )
