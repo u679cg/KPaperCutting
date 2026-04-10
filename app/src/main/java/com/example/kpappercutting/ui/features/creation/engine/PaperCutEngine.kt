@@ -197,7 +197,7 @@ class PaperCutEngine {
 
     fun resetAll() {
         selectedTool = EditTool.SCISSORS
-        selectedShape = PaperShape.SQUARE
+//        selectedShape = PaperShape.SQUARE
         selectedEraserSize = EraserSize.MEDIUM
         eraserPaint.strokeWidth = selectedEraserSize.strokeWidth
         eraserPreviewPaint.strokeWidth = selectedEraserSize.previewWidth
