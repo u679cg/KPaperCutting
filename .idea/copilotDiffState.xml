@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CopilotDiffPersistence">
+    <option name="pendingDiffs">
+      <map>
+        <entry key="/HomeScreen (snapshot).kt">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="/HomeScreen (snapshot).kt" />
+              <option name="originalContent" value="package com.example.kpappercutting.ui.screens&#10;&#10;import androidx.compose.material3.Text&#10;import androidx.compose.runtime.Composable&#10;&#10;@Composable&#10;fun HomeScreen() {&#10;    Text(text = &quot;首页 - Home&quot;)&#10;}&#10;&#10;" />
+              <option name="updatedContent" value="package com.example.kpappercutting.ui.screens&#10;&#10;import androidx.compose.runtime.Composable&#10;import com.example.kpappercutting.features.home.ui.HomeScreen as FeatureHomeScreen&#10;&#10;@Composable&#10;fun HomeScreen() {&#10;    // wrapper to keep existing imports/reference working&#10;    FeatureHomeScreen()&#10;}" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+</project>
