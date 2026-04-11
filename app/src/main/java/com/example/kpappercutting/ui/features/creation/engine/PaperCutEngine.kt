@@ -21,9 +21,15 @@ import com.example.kpappercutting.ui.features.creation.FoldCatalog
 import com.example.kpappercutting.ui.features.creation.FoldGeometry
 import com.example.kpappercutting.ui.features.creation.FoldMode
 import com.example.kpappercutting.ui.features.creation.spec
+import kotlin.math.hypot
 import kotlin.math.roundToInt
 
 class PaperCutEngine {
+    companion object {
+        private const val SCISSORS_SMOOTHING_THRESHOLD = 8f
+        private const val BRUSH_SMOOTHING_THRESHOLD = 4f
+    }
+
     private data class Snapshot(
         val paperPath: Path,
         val sketchBitmap: Bitmap?,
@@ -105,8 +111,10 @@ class PaperCutEngine {
     private val undoStack = mutableListOf<Snapshot>()
     private val redoStack = mutableListOf<Snapshot>()
 
-    private var lastTouchX = 0f
-    private var lastTouchY = 0f
+    private var lastPointerX = 0f
+    private var lastPointerY = 0f
+    private var lastPathX = 0f
+    private var lastPathY = 0f
     private var strokeActive = false
     private var strokePendingEntry = false
     private var renderVersionInternal = 0
@@ -281,8 +289,10 @@ class PaperCutEngine {
         strokeActive = true
         strokePendingEntry = !canStartStrokeOnPaper(mappedPoint)
         drawingPath.reset()
-        lastTouchX = mappedPoint.x
-        lastTouchY = mappedPoint.y
+        lastPointerX = mappedPoint.x
+        lastPointerY = mappedPoint.y
+        lastPathX = mappedPoint.x
+        lastPathY = mappedPoint.y
         if (!strokePendingEntry) {
             beginStrokeAt(mappedPoint)
         }
@@ -293,42 +303,35 @@ class PaperCutEngine {
         if (!strokeActive) return
         val mappedPoint = mapPointToCanvas(point)
         if (!isPointInsideCanvas(mappedPoint)) {
-            lastTouchX = mappedPoint.x
-            lastTouchY = mappedPoint.y
+            lastPointerX = mappedPoint.x
+            lastPointerY = mappedPoint.y
             return
         }
 
         if (strokePendingEntry) {
             if (!canStartStrokeOnPaper(mappedPoint)) {
-                lastTouchX = mappedPoint.x
-                lastTouchY = mappedPoint.y
+                lastPointerX = mappedPoint.x
+                lastPointerY = mappedPoint.y
                 return
             }
             val entryPoint = findStrokeEntryPoint(
-                from = Offset(lastTouchX, lastTouchY),
+                from = Offset(lastPointerX, lastPointerY),
                 to = mappedPoint
             )
             beginStrokeAt(entryPoint)
-            if (entryPoint != mappedPoint) {
-                drawingPath.lineTo(mappedPoint.x, mappedPoint.y)
-            }
-            lastTouchX = mappedPoint.x
-            lastTouchY = mappedPoint.y
+            appendSmoothedPoint(mappedPoint)
+            lastPointerX = mappedPoint.x
+            lastPointerY = mappedPoint.y
             bumpRenderVersion()
             return
         }
 
-        val midX = (lastTouchX + mappedPoint.x) / 2f
-        val midY = (lastTouchY + mappedPoint.y) / 2f
-        drawingPath.quadTo(lastTouchX, lastTouchY, midX, midY)
-        if (selectedTool == EditTool.PENCIL || selectedTool == EditTool.ERASER) {
-            applySketch()
-            drawingPath.reset()
-            drawingPath.moveTo(midX, midY)
+        val pathChanged = appendSmoothedPoint(mappedPoint)
+        lastPointerX = mappedPoint.x
+        lastPointerY = mappedPoint.y
+        if (pathChanged) {
+            bumpRenderVersion()
         }
-        lastTouchX = mappedPoint.x
-        lastTouchY = mappedPoint.y
-        bumpRenderVersion()
     }
 
     fun endStroke() {
@@ -349,15 +352,16 @@ class PaperCutEngine {
         }
         when (selectedTool) {
             EditTool.SCISSORS -> {
-                if (!drawingPath.isEmpty) {
-                    drawingPath.lineTo(lastTouchX, lastTouchY)
+                if (finalizeStrokePath()) {
                     drawingPath.close()
                     performCut()
                 }
             }
             EditTool.PENCIL, EditTool.ERASER -> {
-                applySketch()
-                saveSnapshot()
+                if (finalizeStrokePath()) {
+                    applySketch()
+                    saveSnapshot()
+                }
             }
         }
         strokeActive = false
@@ -584,6 +588,43 @@ class PaperCutEngine {
         strokePendingEntry = false
         drawingPath.reset()
         drawingPath.moveTo(point.x, point.y)
+        lastPathX = point.x
+        lastPathY = point.y
+    }
+
+    private fun appendSmoothedPoint(point: Offset): Boolean {
+        val dx = point.x - lastPathX
+        val dy = point.y - lastPathY
+        if (hypot(dx.toDouble(), dy.toDouble()).toFloat() < currentSmoothingThreshold()) {
+            return false
+        }
+
+        val midX = (lastPathX + point.x) / 2f
+        val midY = (lastPathY + point.y) / 2f
+        drawingPath.quadTo(lastPathX, lastPathY, midX, midY)
+        if (selectedTool == EditTool.PENCIL || selectedTool == EditTool.ERASER) {
+            applySketch()
+            drawingPath.reset()
+            drawingPath.moveTo(midX, midY)
+        }
+        lastPathX = point.x
+        lastPathY = point.y
+        return true
+    }
+
+    private fun finalizeStrokePath(): Boolean {
+        if (drawingPath.isEmpty) {
+            return false
+        }
+        drawingPath.quadTo(lastPathX, lastPathY, lastPathX, lastPathY)
+        return true
+    }
+
+    private fun currentSmoothingThreshold(): Float {
+        return when (selectedTool) {
+            EditTool.SCISSORS -> SCISSORS_SMOOTHING_THRESHOLD
+            EditTool.PENCIL, EditTool.ERASER -> BRUSH_SMOOTHING_THRESHOLD
+        }
     }
 
     private fun canStartStrokeOnPaper(point: Offset): Boolean {
