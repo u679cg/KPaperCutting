@@ -30,7 +30,28 @@ class PaperCutEngine {
         private const val BRUSH_SMOOTHING_THRESHOLD = 4f
     }
 
-    private data class Snapshot(
+    data class SessionState(
+        val canvasWidth: Int,
+        val canvasHeight: Int,
+        val selectedShape: PaperShape,
+        val selectedTool: EditTool,
+        val selectedEraserSize: EraserSize,
+        val selectedPaperColor: Int,
+        val foldMode: FoldMode,
+        val isFolded: Boolean,
+        val renderVersion: Int,
+        val transformValues: FloatArray,
+        val mainPath: Path,
+        val sketchBitmap: Bitmap?,
+        val undoStack: List<HistorySnapshot>,
+        val redoStack: List<HistorySnapshot>,
+        val preFoldPaperPath: Path?,
+        val preFoldSketchBitmap: Bitmap?,
+        val foldedBasePath: Path?,
+        val foldedBaseSketchBitmap: Bitmap?
+    )
+
+    data class HistorySnapshot(
         val paperPath: Path,
         val sketchBitmap: Bitmap?,
         val paperColor: Int,
@@ -102,14 +123,18 @@ class PaperCutEngine {
     private val transformMatrix = Matrix()
     private val inverseMatrix = Matrix()
     private val matrixValues = FloatArray(9)
+    private val foldedDisplayBaseMatrix = Matrix()
+    private val currentDisplayMatrixCache = Matrix()
+    private var foldedDisplayBaseDirty = true
+    private var currentDisplayMatrixDirty = true
 
     private var mainPath = Path()
     private var drawingPath = Path()
     private var sketchBitmap: Bitmap? = null
     private var sketchCanvas: Canvas? = null
 
-    private val undoStack = mutableListOf<Snapshot>()
-    private val redoStack = mutableListOf<Snapshot>()
+    private val undoStack = mutableListOf<HistorySnapshot>()
+    private val redoStack = mutableListOf<HistorySnapshot>()
 
     private var lastPointerX = 0f
     private var lastPointerY = 0f
@@ -152,9 +177,92 @@ class PaperCutEngine {
     val availableFoldModes: List<FoldMode>
         get() = FoldCatalog.selectableModes
 
+    fun saveSessionState(): SessionState {
+        transformMatrix.getValues(matrixValues)
+        return SessionState(
+            canvasWidth = canvasWidth,
+            canvasHeight = canvasHeight,
+            selectedShape = selectedShape,
+            selectedTool = selectedTool,
+            selectedEraserSize = selectedEraserSize,
+            selectedPaperColor = selectedPaperColor,
+            foldMode = foldMode,
+            isFolded = isFolded,
+            renderVersion = renderVersionInternal,
+            transformValues = matrixValues.copyOf(),
+            mainPath = Path(mainPath),
+            sketchBitmap = sketchBitmap.deepCopy(),
+            undoStack = undoStack.map(::copyHistorySnapshot),
+            redoStack = redoStack.map(::copyHistorySnapshot),
+            preFoldPaperPath = preFoldPaperPath?.let(::Path),
+            preFoldSketchBitmap = preFoldSketchBitmap.deepCopy(),
+            foldedBasePath = foldedBasePath?.let(::Path),
+            foldedBaseSketchBitmap = foldedBaseSketchBitmap.deepCopy()
+        )
+    }
+
+    fun restoreSessionState(sessionState: SessionState) {
+        canvasWidth = sessionState.canvasWidth
+        canvasHeight = sessionState.canvasHeight
+        selectedShape = sessionState.selectedShape
+        selectedTool = sessionState.selectedTool
+        selectedEraserSize = sessionState.selectedEraserSize
+        selectedPaperColor = sessionState.selectedPaperColor
+        foldMode = sessionState.foldMode
+        isFolded = sessionState.isFolded
+        renderVersionInternal = sessionState.renderVersion
+        preFoldPaperPath = sessionState.preFoldPaperPath?.let(::Path)
+        preFoldSketchBitmap = sessionState.preFoldSketchBitmap.deepCopy()
+        foldedBasePath = sessionState.foldedBasePath?.let(::Path)
+        foldedBaseSketchBitmap = sessionState.foldedBaseSketchBitmap.deepCopy()
+
+        eraserPaint.strokeWidth = selectedEraserSize.strokeWidth
+        eraserPreviewPaint.strokeWidth = selectedEraserSize.previewWidth
+        applyPaperColor(selectedPaperColor)
+
+        if (canvasWidth <= 0 || canvasHeight <= 0) {
+            mainPath = Path()
+            sketchBitmap = null
+            sketchCanvas = null
+            undoStack.clear()
+            redoStack.clear()
+            resetTransform()
+            invalidateDisplayMatrices(baseMatrixChanged = true)
+            bumpRenderVersion()
+            return
+        }
+
+        centerX = canvasWidth / 2f
+        centerY = canvasHeight / 2f
+        radius = minOf(canvasWidth, canvasHeight) / 2f * 0.85f
+        paperBounds.set(centerX - radius, centerY - radius, centerX + radius, centerY + radius)
+        mainPath = Path(sessionState.mainPath)
+        sketchBitmap = sessionState.sketchBitmap.deepCopy()
+            ?: Bitmap.createBitmap(canvasWidth, canvasHeight, Bitmap.Config.ARGB_8888)
+        sketchCanvas = Canvas(sketchBitmap!!)
+        transformMatrix.setValues(sessionState.transformValues)
+
+        undoStack.clear()
+        undoStack += sessionState.undoStack.map(::copyHistorySnapshot)
+        redoStack.clear()
+        redoStack += sessionState.redoStack.map(::copyHistorySnapshot)
+
+        strokeActive = false
+        strokePendingEntry = false
+        drawingPath.reset()
+        updatePaperRegion()
+        invalidateDisplayMatrices(baseMatrixChanged = true)
+        bumpRenderVersion()
+    }
+
     fun attachSize(width: Int, height: Int) {
         if (width <= 0 || height <= 0) return
         if (width == canvasWidth && height == canvasHeight) return
+
+        if (canvasWidth > 0 && canvasHeight > 0) {
+            resizeCanvas(width, height)
+            return
+        }
 
         canvasWidth = width
         canvasHeight = height
@@ -233,6 +341,25 @@ class PaperCutEngine {
         val outputCanvas = Canvas(output)
         drawPaperContent(outputCanvas, mainPath)
         sketchBitmap?.let { outputCanvas.drawBitmap(it, 0f, 0f, null) }
+        return output
+    }
+
+    fun getExpandedBitmap(): Bitmap? {
+        if (canvasWidth <= 0 || canvasHeight <= 0) return null
+
+        val exportPaperPath = if (isFolded) buildExpandedPaperPath() else Path(mainPath)
+        val exportSketchBitmap = if (isFolded) {
+            preFoldSketchBitmap.deepCopy()
+        } else {
+            sketchBitmap.deepCopy()
+        }
+
+        val output = Bitmap.createBitmap(canvasWidth, canvasHeight, Bitmap.Config.ARGB_8888)
+        val outputCanvas = Canvas(output)
+        drawPaperContent(outputCanvas, exportPaperPath)
+        exportSketchBitmap?.let { bitmap ->
+            outputCanvas.drawBitmap(bitmap, 0f, 0f, null)
+        }
         return output
     }
 
@@ -388,6 +515,7 @@ class PaperCutEngine {
 
         transformMatrix.postTranslate(pan.x, pan.y)
         transformMatrix.postScale(clampedZoom, clampedZoom, centroid.x, centroid.y)
+        invalidateDisplayMatrices()
         bumpRenderVersion()
     }
 
@@ -459,6 +587,7 @@ class PaperCutEngine {
             saveSnapshot()
         }
         updatePaperRegion()
+        invalidateDisplayMatrices(baseMatrixChanged = true)
         bumpRenderVersion()
     }
 
@@ -489,6 +618,23 @@ class PaperCutEngine {
     private fun foldLogic() {
         enterFoldedState()
         saveSnapshot()
+    }
+
+    private fun buildExpandedPaperPath(): Path {
+        val geometry = currentFoldGeometry() ?: return Path(mainPath)
+        val basePath = preFoldPaperPath ?: return Path(mainPath)
+        val baseFoldedPath = foldedBasePath ?: return Path(mainPath)
+
+        val foldedRemovedArea = Path(baseFoldedPath).apply {
+            op(mainPath, Path.Op.DIFFERENCE)
+        }
+        val expandedRemovedArea = expandPathByFoldSymmetry(
+            path = foldedRemovedArea,
+            geometry = geometry
+        )
+        return Path(basePath).apply {
+            op(expandedRemovedArea, Path.Op.DIFFERENCE)
+        }
     }
 
     private fun unfoldLogic(saveSnapshotAfterRestore: Boolean = true) {
@@ -522,6 +668,7 @@ class PaperCutEngine {
         foldedBaseSketchBitmap = null
         updatePaperRegion()
         clipSketchToPaper()
+        invalidateDisplayMatrices(baseMatrixChanged = true)
         if (saveSnapshotAfterRestore) {
             saveSnapshot()
         }
@@ -531,7 +678,7 @@ class PaperCutEngine {
         if (undoStack.size >= 20) {
             undoStack.removeAt(0)
         }
-        undoStack += Snapshot(
+        undoStack += HistorySnapshot(
             paperPath = Path(mainPath),
             sketchBitmap = sketchBitmap.deepCopy(),
             paperColor = selectedPaperColor,
@@ -546,7 +693,7 @@ class PaperCutEngine {
         redoStack.clear()
     }
 
-    private fun restoreSnapshot(snapshot: Snapshot) {
+    private fun restoreSnapshot(snapshot: HistorySnapshot) {
         selectedPaperColor = snapshot.paperColor
         applyPaperColor(selectedPaperColor)
         selectedShape = snapshot.shape
@@ -567,6 +714,7 @@ class PaperCutEngine {
         strokePendingEntry = false
         drawingPath.reset()
         updatePaperRegion()
+        invalidateDisplayMatrices(baseMatrixChanged = true)
     }
 
     private fun drawPaperContent(canvas: Canvas, path: Path) {
@@ -709,15 +857,19 @@ class PaperCutEngine {
     }
 
     private fun currentDisplayMatrix(): Matrix {
-        return if (isFolded && foldMode != FoldMode.NONE) {
-            createFoldedDisplayBaseMatrix().apply {
+        if (currentDisplayMatrixDirty) {
+            if (isFolded && foldMode != FoldMode.NONE) {
+                updateFoldedDisplayBaseMatrixIfNeeded()
+                currentDisplayMatrixCache.set(foldedDisplayBaseMatrix)
                 // User gestures are concatenated after the folded display transform so
                 // pinch-pan sensitivity stays consistent with the pre-enlargement behavior.
-                postConcat(transformMatrix)
+                currentDisplayMatrixCache.postConcat(transformMatrix)
+            } else {
+                currentDisplayMatrixCache.set(transformMatrix)
             }
-        } else {
-            Matrix(transformMatrix)
+            currentDisplayMatrixDirty = false
         }
+        return currentDisplayMatrixCache
     }
 
     private fun getFoldedDisplayRotation(): Float {
@@ -725,28 +877,28 @@ class PaperCutEngine {
         return -(getFoldSweepAngle() / 2f)
     }
 
-    private fun createFoldedDisplayBaseMatrix(): Matrix {
-        val foldedDisplayMatrix = Matrix().apply {
-            // Two-part and four-part folds use a smaller default folded display size;
-            // all other fold modes keep the current enlarged presentation.
-            postScale(getFoldedDisplayScale(), getFoldedDisplayScale(), centerX, centerY)
-            // Align the folded sector axis with the screen vertical midline.
-            postRotate(getFoldedDisplayRotation(), centerX, centerY)
-        }
+    private fun updateFoldedDisplayBaseMatrixIfNeeded() {
+        if (!foldedDisplayBaseDirty) return
 
+        foldedDisplayBaseMatrix.reset()
+        // Two-part and four-part folds use a smaller default folded display size;
+        // all other fold modes keep the current enlarged presentation.
+        foldedDisplayBaseMatrix.postScale(getFoldedDisplayScale(), getFoldedDisplayScale(), centerX, centerY)
+        // Align the folded sector axis with the screen vertical midline.
+        foldedDisplayBaseMatrix.postRotate(getFoldedDisplayRotation(), centerX, centerY)
         val displayBounds = RectF()
         Path(mainPath).apply {
-            transform(foldedDisplayMatrix)
+            transform(foldedDisplayBaseMatrix)
             computeBounds(displayBounds, true)
         }
 
         // Keep the enlarged folded sector centered inside the canvas area, which is the
         // region directly below the toolbar on every device size.
-        foldedDisplayMatrix.postTranslate(
+        foldedDisplayBaseMatrix.postTranslate(
             centerX - displayBounds.centerX(),
             centerY - displayBounds.centerY()
         )
-        return foldedDisplayMatrix
+        foldedDisplayBaseDirty = false
     }
 
     private fun getFoldedDisplayScale(): Float {
@@ -761,6 +913,7 @@ class PaperCutEngine {
         if (canvasWidth <= 0 || canvasHeight <= 0) return
         transformMatrix.reset()
         transformMatrix.postScale(0.65f, 0.65f, centerX, centerY)
+        invalidateDisplayMatrices()
     }
 
     private fun updatePaperRegion() {
@@ -793,6 +946,7 @@ class PaperCutEngine {
         foldedBaseSketchBitmap = sketchBitmap.deepCopy()
         isFolded = true
         updatePaperRegion()
+        invalidateDisplayMatrices(baseMatrixChanged = true)
     }
 
     private fun createFoldWedgePath(): Path {
@@ -838,9 +992,90 @@ class PaperCutEngine {
         return clippedBitmap
     }
 
+    private fun resizeCanvas(newWidth: Int, newHeight: Int) {
+        val oldWidth = canvasWidth
+        val oldHeight = canvasHeight
+        val scaleX = newWidth.toFloat() / oldWidth.toFloat()
+        val scaleY = newHeight.toFloat() / oldHeight.toFloat()
+        val scaleMatrix = Matrix().apply { setScale(scaleX, scaleY) }
+
+        canvasWidth = newWidth
+        canvasHeight = newHeight
+        centerX = newWidth / 2f
+        centerY = newHeight / 2f
+        radius = minOf(newWidth, newHeight) / 2f * 0.85f
+        paperBounds.set(centerX - radius, centerY - radius, centerX + radius, centerY + radius)
+        paperRegion = Region(0, 0, newWidth, newHeight)
+
+        mainPath.transform(scaleMatrix)
+        drawingPath.transform(scaleMatrix)
+        preFoldPaperPath = preFoldPaperPath?.scaled(scaleMatrix)
+        foldedBasePath = foldedBasePath?.scaled(scaleMatrix)
+        preFoldSketchBitmap = preFoldSketchBitmap.scaled(newWidth, newHeight)
+        foldedBaseSketchBitmap = foldedBaseSketchBitmap.scaled(newWidth, newHeight)
+        sketchBitmap = sketchBitmap.scaled(newWidth, newHeight)
+            ?: Bitmap.createBitmap(newWidth, newHeight, Bitmap.Config.ARGB_8888)
+        sketchCanvas = Canvas(sketchBitmap!!)
+
+        resizeHistoryStack(undoStack, scaleMatrix, newWidth, newHeight)
+        resizeHistoryStack(redoStack, scaleMatrix, newWidth, newHeight)
+
+        strokeActive = false
+        strokePendingEntry = false
+        resetTransform()
+        updatePaperRegion()
+        invalidateDisplayMatrices(baseMatrixChanged = true)
+        bumpRenderVersion()
+    }
+
+    private fun resizeHistoryStack(
+        stack: MutableList<HistorySnapshot>,
+        scaleMatrix: Matrix,
+        newWidth: Int,
+        newHeight: Int
+    ) {
+        if (stack.isEmpty()) return
+
+        val resizedSnapshots = stack.map { snapshot ->
+            snapshot.copy(
+                paperPath = snapshot.paperPath.scaled(scaleMatrix),
+                sketchBitmap = snapshot.sketchBitmap.scaled(newWidth, newHeight),
+                preFoldPaperPath = snapshot.preFoldPaperPath?.scaled(scaleMatrix),
+                preFoldSketchBitmap = snapshot.preFoldSketchBitmap.scaled(newWidth, newHeight),
+                foldedBasePath = snapshot.foldedBasePath?.scaled(scaleMatrix),
+                foldedBaseSketchBitmap = snapshot.foldedBaseSketchBitmap.scaled(newWidth, newHeight)
+            )
+        }
+
+        stack.clear()
+        stack += resizedSnapshots
+    }
+
     private fun applyPaperColor(color: Int) {
         paperPaint.color = color
         paperShadowPaint.color = color
+    }
+
+    private fun copyHistorySnapshot(snapshot: HistorySnapshot): HistorySnapshot {
+        return HistorySnapshot(
+            paperPath = Path(snapshot.paperPath),
+            sketchBitmap = snapshot.sketchBitmap.deepCopy(),
+            paperColor = snapshot.paperColor,
+            shape = snapshot.shape,
+            foldMode = snapshot.foldMode,
+            isFolded = snapshot.isFolded,
+            preFoldPaperPath = snapshot.preFoldPaperPath?.let(::Path),
+            preFoldSketchBitmap = snapshot.preFoldSketchBitmap.deepCopy(),
+            foldedBasePath = snapshot.foldedBasePath?.let(::Path),
+            foldedBaseSketchBitmap = snapshot.foldedBaseSketchBitmap.deepCopy()
+        )
+    }
+
+    private fun invalidateDisplayMatrices(baseMatrixChanged: Boolean = false) {
+        if (baseMatrixChanged) {
+            foldedDisplayBaseDirty = true
+        }
+        currentDisplayMatrixDirty = true
     }
 
     private fun bumpRenderVersion() {
@@ -851,4 +1086,13 @@ class PaperCutEngine {
 private fun Bitmap?.deepCopy(): Bitmap? {
     if (this == null) return null
     return copy(Bitmap.Config.ARGB_8888, true)
+}
+
+private fun Bitmap?.scaled(width: Int, height: Int): Bitmap? {
+    if (this == null) return null
+    return Bitmap.createScaledBitmap(this, width, height, true)
+}
+
+private fun Path.scaled(matrix: Matrix): Path {
+    return Path(this).apply { transform(matrix) }
 }

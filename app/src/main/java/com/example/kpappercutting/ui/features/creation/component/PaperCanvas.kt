@@ -108,7 +108,6 @@ fun PaperCanvas(
         renderVersion
         selectedShape
         selectedTool
-        engine.attachSize(size.width.toInt(), size.height.toInt())
         drawIntoCanvas { canvas ->
             engine.render(canvas.nativeCanvas)
         }

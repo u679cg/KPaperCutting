@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,8 +43,8 @@ enum class Screen {
 
 @Composable
 fun AppSkeleton() {
-    var currentScreen by remember { mutableStateOf(Screen.Home) }
-    var previousScreen by remember { mutableStateOf(Screen.Home) }
+    var currentScreen by rememberSaveable { mutableStateOf(Screen.Home) }
+    var previousScreen by rememberSaveable { mutableStateOf(Screen.Home) }
     val showBottomBar = currentScreen != Screen.Create
     val cultureDrawBehindStatusBar = currentScreen == Screen.Culture
 

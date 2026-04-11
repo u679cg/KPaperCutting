@@ -14,6 +14,7 @@ class CreateViewModel : ViewModel() {
         private set
 
     init {
+        CreateSessionMemoryStore.sessionState?.let(engine::restoreSessionState)
         syncUiState()
     }
 
@@ -42,7 +43,13 @@ class CreateViewModel : ViewModel() {
 
     fun resetCanvas() {
         engine.resetAll()
+        persistSession()
         syncUiState()
+    }
+
+    override fun onCleared() {
+        persistSession()
+        super.onCleared()
     }
 
     private fun syncUiState() {
@@ -59,5 +66,9 @@ class CreateViewModel : ViewModel() {
             canExpand = engine.canExpand,
             renderVersion = engine.renderVersion
         )
+    }
+
+    fun persistSession() {
+        CreateSessionMemoryStore.sessionState = engine.saveSessionState()
     }
 }

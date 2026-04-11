@@ -219,11 +219,10 @@ private fun CreateHeader(
             modifier = Modifier.align(Alignment.CenterEnd),
             onClick = onShareClick
         ) {
-            Text(
-                text = "↗",
-                color = Color(0xFFD8D8D8),
-                fontSize = 22.sp,
-                fontWeight = FontWeight.SemiBold
+            Image(
+                painter = painterResource(R.drawable.ic_share),
+                contentDescription = "Share",
+                modifier = Modifier.size(22.dp)
             )
         }
     }
