@@ -26,7 +26,7 @@ import kotlin.math.roundToInt
 
 class PaperCutEngine {
     companion object {
-        private const val SCISSORS_SMOOTHING_THRESHOLD = 8f
+        private const val SCISSORS_SMOOTHING_THRESHOLD = 5f
         private const val BRUSH_SMOOTHING_THRESHOLD = 4f
     }
 
@@ -418,8 +418,9 @@ class PaperCutEngine {
         if (!drawingPath.isEmpty) {
             when (selectedTool) {
                 EditTool.SCISSORS -> {
-                    canvas.drawPath(drawingPath, selectionPaint)
-                    canvas.drawPath(drawingPath, strokePaint)
+                    val previewPath = currentPreviewPath()
+                    canvas.drawPath(previewPath, selectionPaint)
+                    canvas.drawPath(previewPath, strokePaint)
                 }
                 EditTool.PENCIL -> canvas.drawPath(drawingPath, brushPaint)
                 EditTool.ERASER -> canvas.drawPath(drawingPath, eraserPreviewPaint)
@@ -618,6 +619,24 @@ class PaperCutEngine {
         }
         drawingPath.quadTo(lastPathX, lastPathY, lastPathX, lastPathY)
         return true
+    }
+
+    private fun currentPreviewPath(): Path {
+        if (selectedTool != EditTool.SCISSORS || !strokeActive) {
+            return drawingPath
+        }
+
+        val dx = lastPointerX - lastPathX
+        val dy = lastPointerY - lastPathY
+        if (hypot(dx.toDouble(), dy.toDouble()).toFloat() <= 0.5f) {
+            return drawingPath
+        }
+
+        val previewPath = Path(drawingPath)
+        val midX = (lastPathX + lastPointerX) / 2f
+        val midY = (lastPathY + lastPointerY) / 2f
+        previewPath.quadTo(lastPathX, lastPathY, midX, midY)
+        return previewPath
     }
 
     private fun currentSmoothingThreshold(): Float {
