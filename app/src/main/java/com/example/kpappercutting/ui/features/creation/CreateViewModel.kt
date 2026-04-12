@@ -35,7 +35,10 @@ class CreateViewModel : ViewModel() {
             is CreateUiAction.SelectTool -> engine.setTool(action.tool)
             is CreateUiAction.SelectEraserSize -> engine.setEraserSize(action.size)
             is CreateUiAction.SelectPaperColor -> engine.setPaperColor(action.color)
-            is CreateUiAction.SelectFoldMode -> engine.selectFoldMode(action.mode)
+            is CreateUiAction.SelectFoldMode -> {
+                selectedFoldTechnique = FoldTechniqueOption.fromFoldMode(action.mode)
+                engine.selectFoldMode(action.mode)
+            }
             is CreateUiAction.SelectFoldTechnique -> selectFoldTechnique(action.technique)
             is CreateUiAction.SetContinuousFoldLayerCount -> updateContinuousFoldLayerCount(action.layerCount)
             is CreateUiAction.StartStroke -> engine.startStroke(action.point)
@@ -48,7 +51,7 @@ class CreateViewModel : ViewModel() {
 
             CreateUiAction.EndStroke -> engine.endStroke()
             CreateUiAction.ToggleFold -> engine.toggleFold()
-            CreateUiAction.ClearCanvas -> engine.clearCanvas()
+            CreateUiAction.ClearCanvas -> engine.clearCanvasPreservingFoldSelection()
             CreateUiAction.Undo -> engine.undo()
             CreateUiAction.Redo -> engine.redo()
         }

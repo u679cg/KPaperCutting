@@ -303,12 +303,39 @@ class PaperCutEngine {
 
     fun setShape(shape: PaperShape) {
         if (selectedShape == shape) return
+        val previousShape = selectedShape
         selectedShape = shape
-        rebuildPaperPath(clearSketch = true, resetHistory = true)
+        updatePaperShapePreservingContent(previousShape)
     }
 
     fun clearCanvas() {
         resetAll()
+    }
+
+    fun clearCanvasPreservingFoldSelection() {
+        val preservedFoldMode = foldMode
+        val preservedFoldedState = isFolded
+
+        selectedTool = EditTool.SCISSORS
+        selectedEraserSize = EraserSize.MEDIUM
+        eraserPaint.strokeWidth = selectedEraserSize.strokeWidth
+        eraserPreviewPaint.strokeWidth = selectedEraserSize.previewWidth
+        selectedPaperColor = CreationPaperDefaults.DEFAULT_PAPER_COLOR
+        applyPaperColor(selectedPaperColor)
+        preFoldPaperPath = null
+        preFoldSketchBitmap = null
+        foldedBasePath = null
+        foldedBaseSketchBitmap = null
+        loadedBitmap = null
+        isFolded = false
+        foldMode = preservedFoldMode
+        rebuildPaperPath(clearSketch = true, resetHistory = true)
+
+        if (preservedFoldedState && foldMode != FoldMode.NONE) {
+            enterFoldedState()
+            saveSnapshot()
+            bumpRenderVersion()
+        }
     }
 
     fun resetAll() {
@@ -574,11 +601,7 @@ class PaperCutEngine {
             mainPath.arcTo(paperBounds, -90f, wedgeAngle)
             mainPath.close()
         } else {
-            if (selectedShape == PaperShape.CIRCLE) {
-                mainPath.addCircle(centerX, centerY, radius, Path.Direction.CW)
-            } else {
-                mainPath.addRect(paperBounds, Path.Direction.CW)
-            }
+            mainPath.addPath(createBasePaperPath(selectedShape))
         }
 
         if (resetHistory) {
@@ -1026,6 +1049,68 @@ class PaperCutEngine {
         updatePaperRegion()
         invalidateDisplayMatrices(baseMatrixChanged = true)
         bumpRenderVersion()
+    }
+
+    private fun updatePaperShapePreservingContent(previousShape: PaperShape) {
+        if (canvasWidth == 0 || canvasHeight == 0) return
+
+        val newBasePath = createBasePaperPath(selectedShape)
+        val currentRemovedArea = when {
+            isFolded && foldedBasePath != null -> {
+                Path(foldedBasePath!!).apply { op(mainPath, Path.Op.DIFFERENCE) }
+            }
+
+            else -> {
+                createBasePaperPath(previousShape).apply { op(mainPath, Path.Op.DIFFERENCE) }
+            }
+        }
+
+        if (isFolded && foldMode != FoldMode.NONE) {
+            val newFoldedBasePath = Path(newBasePath).apply {
+                op(createFoldWedgePath(), Path.Op.INTERSECT)
+            }
+            mainPath = Path(newFoldedBasePath).apply {
+                op(currentRemovedArea, Path.Op.DIFFERENCE)
+            }
+            preFoldPaperPath = Path(newBasePath)
+            preFoldSketchBitmap = clipBitmapToPath(
+                sourceBitmap = preFoldSketchBitmap,
+                clipPath = newBasePath
+            ) ?: Bitmap.createBitmap(canvasWidth, canvasHeight, Bitmap.Config.ARGB_8888)
+            foldedBasePath = Path(newFoldedBasePath)
+            foldedBaseSketchBitmap = clipBitmapToPath(
+                sourceBitmap = preFoldSketchBitmap,
+                clipPath = newFoldedBasePath
+            )
+        } else {
+            mainPath = Path(newBasePath).apply {
+                op(currentRemovedArea, Path.Op.DIFFERENCE)
+            }
+        }
+
+        sketchBitmap = clipBitmapToPath(
+            sourceBitmap = sketchBitmap,
+            clipPath = mainPath
+        ) ?: Bitmap.createBitmap(canvasWidth, canvasHeight, Bitmap.Config.ARGB_8888)
+        sketchCanvas = Canvas(sketchBitmap!!)
+        strokeActive = false
+        strokePendingEntry = false
+        drawingPath.reset()
+        updatePaperRegion()
+        clipSketchToPaper()
+        invalidateDisplayMatrices(baseMatrixChanged = true)
+        saveSnapshot()
+        bumpRenderVersion()
+    }
+
+    private fun createBasePaperPath(shape: PaperShape): Path {
+        return Path().apply {
+            if (shape == PaperShape.CIRCLE) {
+                addCircle(centerX, centerY, radius, Path.Direction.CW)
+            } else {
+                addRect(paperBounds, Path.Direction.CW)
+            }
+        }
     }
 
     private fun resizeHistoryStack(
