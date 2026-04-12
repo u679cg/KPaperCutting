@@ -4,7 +4,11 @@ package com.example.kpappercutting.ui.features.creation
 import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -15,6 +19,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+private enum class CreateSubRoute {
+    MAIN,
+    ADD_PATTERN
+}
+
 @Composable
 fun CreateRoute(
     onBack: () -> Unit = {},
@@ -24,6 +33,7 @@ fun CreateRoute(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val lifecycleOwner = LocalLifecycleOwner.current
+    var currentSubRoute by rememberSaveable { mutableStateOf(CreateSubRoute.MAIN) }
 
     DisposableEffect(lifecycleOwner, viewModel) {
         val observer = LifecycleEventObserver { _, event ->
@@ -38,39 +48,54 @@ fun CreateRoute(
         }
     }
 
-    CreateScreen(
-        uiState = viewModel.uiState,
-        engine = viewModel.engine,
-        onAction = viewModel::onAction,
-        onMenuAction = { action ->
-            if (action == CreationMenuAction.INITIALIZE_CANVAS) {
-                viewModel.resetCanvas()
-            } else if (action == CreationMenuAction.EXPORT_TO_GALLERY) {
-                coroutineScope.launch {
-                    val exportResult = withContext(Dispatchers.IO) {
-                        val bitmap = viewModel.engine.getExpandedBitmap()
-                            ?: return@withContext Result.failure<String>(
-                                IllegalStateException("当前没有可导出的图形")
-                            )
-                        GalleryExporter.exportBitmapToGallery(
-                            context = context,
-                            bitmap = bitmap,
-                            displayNamePrefix = "kpappercutting"
-                        )
-                    }
+    when (currentSubRoute) {
+        CreateSubRoute.MAIN -> {
+            CreateScreen(
+                uiState = viewModel.uiState,
+                engine = viewModel.engine,
+                onAction = viewModel::onAction,
+                onOpenAddPattern = { currentSubRoute = CreateSubRoute.ADD_PATTERN },
+                onMenuAction = { action ->
+                    if (action == CreationMenuAction.INITIALIZE_CANVAS) {
+                        viewModel.resetCanvas()
+                    } else if (action == CreationMenuAction.EXPORT_TO_GALLERY) {
+                        coroutineScope.launch {
+                            val exportResult = withContext(Dispatchers.IO) {
+                                val bitmap = viewModel.engine.getExpandedBitmap()
+                                    ?: return@withContext Result.failure<String>(
+                                        IllegalStateException("当前没有可导出的图形")
+                                    )
+                                GalleryExporter.exportBitmapToGallery(
+                                    context = context,
+                                    bitmap = bitmap,
+                                    displayNamePrefix = "kpappercutting"
+                                )
+                            }
 
-                    val message = exportResult.fold(
-                        onSuccess = { fileName -> "已导出到相册：$fileName" },
-                        onFailure = { throwable ->
-                            throwable.message ?: "导出失败，请稍后重试"
+                            val message = exportResult.fold(
+                                onSuccess = { fileName -> "已导出到相册：$fileName" },
+                                onFailure = { throwable ->
+                                    throwable.message ?: "导出失败，请稍后重试"
+                                }
+                            )
+                            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                         }
-                    )
-                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                    } else {
+                        onMenuAction(action)
+                    }
+                },
+                onBack = onBack
+            )
+        }
+
+        CreateSubRoute.ADD_PATTERN -> {
+            AddPatternScreen(
+                customPatterns = viewModel.uiState.customPatterns,
+                onBack = { currentSubRoute = CreateSubRoute.MAIN },
+                onPatternImported = { pattern ->
+                    viewModel.onAction(CreateUiAction.AddCustomPattern(pattern))
                 }
-            } else {
-                onMenuAction(action)
-            }
-        },
-        onBack = onBack
-    )
+            )
+        }
+    }
 }

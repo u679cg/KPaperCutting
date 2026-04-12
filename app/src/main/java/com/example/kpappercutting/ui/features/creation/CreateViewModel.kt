@@ -13,6 +13,8 @@ class CreateViewModel : ViewModel() {
     private var selectedFoldTechnique: FoldTechniqueOption =
         FoldTechniqueOption.fromFoldMode(engine.foldMode)
     private var continuousFoldLayerCount: Int = ContinuousFoldLayerOptions.first()
+    private var customPatterns: List<CustomPattern> = emptyList()
+    private var activePattern: EditablePatternState? = null
 
     var uiState by mutableStateOf(CreateUiState())
         private set
@@ -22,6 +24,8 @@ class CreateViewModel : ViewModel() {
         CreateSessionMemoryStore.uiSessionState?.let { session ->
             selectedFoldTechnique = session.selectedFoldTechnique
             continuousFoldLayerCount = session.continuousFoldLayerCount
+            customPatterns = session.customPatterns
+            activePattern = session.activePattern
         } ?: run {
             selectedFoldTechnique = FoldTechniqueOption.fromFoldMode(engine.foldMode)
         }
@@ -48,10 +52,15 @@ class CreateViewModel : ViewModel() {
                 pan = action.pan,
                 zoom = action.zoom
             )
+            is CreateUiAction.StartPatternPlacement -> startPatternPlacement(action.source)
+            is CreateUiAction.UpdateActivePattern -> activePattern = action.pattern.fitsWithin()
+            is CreateUiAction.AddCustomPattern -> customPatterns = customPatterns + action.pattern
 
             CreateUiAction.EndStroke -> engine.endStroke()
             CreateUiAction.ToggleFold -> engine.toggleFold()
             CreateUiAction.ClearCanvas -> engine.clearCanvasPreservingFoldSelection()
+            CreateUiAction.DeleteActivePattern -> activePattern = null
+            CreateUiAction.ConfirmActivePattern -> confirmActivePattern()
             CreateUiAction.Undo -> engine.undo()
             CreateUiAction.Redo -> engine.redo()
         }
@@ -78,7 +87,9 @@ class CreateViewModel : ViewModel() {
         CreateSessionMemoryStore.engineSessionState = engine.saveSessionState()
         CreateSessionMemoryStore.uiSessionState = CreateUiSessionState(
             selectedFoldTechnique = selectedFoldTechnique,
-            continuousFoldLayerCount = continuousFoldLayerCount
+            continuousFoldLayerCount = continuousFoldLayerCount,
+            customPatterns = customPatterns,
+            activePattern = activePattern
         )
     }
 
@@ -96,6 +107,27 @@ class CreateViewModel : ViewModel() {
         }
     }
 
+    private fun startPatternPlacement(source: PatternSource) {
+        val center = engine.patternPlacementCenter()
+        val maxSize = engine.patternPlacementMaxSize()
+        activePattern = PatternCatalog.createEditablePattern(
+            source = source,
+            canvasCenter = center,
+            maxSize = maxSize,
+            previewColor = PatternDefaults.PREVIEW_COLOR
+        )
+    }
+
+    private fun confirmActivePattern() {
+        val pattern = activePattern ?: return
+        val path = PatternCatalog.transformedPathFor(pattern) ?: run {
+            // TODO: Convert imported PNG custom patterns into cuttable contours before enabling confirm.
+            return
+        }
+        engine.applyPatternCut(path)
+        activePattern = null
+    }
+
     private fun syncUiState() {
         uiState = CreateUiState(
             creationMode = CreationMode.fromShape(engine.selectedShape),
@@ -106,6 +138,9 @@ class CreateViewModel : ViewModel() {
             foldMode = engine.foldMode,
             selectedFoldTechnique = selectedFoldTechnique,
             continuousFoldLayerCount = continuousFoldLayerCount,
+            builtinPatterns = PatternCatalog.builtinPatterns,
+            customPatterns = customPatterns,
+            activePattern = activePattern,
             availableFoldModes = engine.availableFoldModes,
             isFolded = engine.isFolded,
             canUndo = engine.canUndo,

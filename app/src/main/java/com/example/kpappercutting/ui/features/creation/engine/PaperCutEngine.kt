@@ -390,6 +390,46 @@ class PaperCutEngine {
         return output
     }
 
+    fun patternPlacementCenter(): Offset {
+        return if (canvasWidth > 0 && canvasHeight > 0) {
+            Offset(centerX, centerY)
+        } else {
+            Offset.Zero
+        }
+    }
+
+    fun patternPlacementMaxSize(): Float {
+        return if (canvasWidth > 0 && canvasHeight > 0) {
+            minOf(canvasWidth, canvasHeight) * 0.8f
+        } else {
+            320f
+        }
+    }
+
+    fun displayPointToCanvas(point: Offset): Offset = mapPointToCanvas(point)
+
+    fun canvasPointToDisplay(point: Offset): Offset {
+        val values = floatArrayOf(point.x, point.y)
+        currentDisplayMatrix().mapPoints(values)
+        return Offset(values[0], values[1])
+    }
+
+    fun canvasPathToDisplay(path: Path): Path {
+        return Path(path).apply {
+            transform(currentDisplayMatrix())
+        }
+    }
+
+    fun applyPatternCut(patternPath: Path) {
+        if (canvasWidth == 0 || canvasHeight == 0) return
+        mainPath.op(patternPath, Path.Op.DIFFERENCE)
+        sketchCanvas?.drawPath(patternPath, clearFillPaint)
+        updatePaperRegion()
+        saveSnapshot()
+        invalidateDisplayMatrices(baseMatrixChanged = true)
+        bumpRenderVersion()
+    }
+
     fun selectFoldMode(mode: FoldMode) {
         if (canvasWidth == 0 || canvasHeight == 0 || mode == FoldMode.NONE) return
 

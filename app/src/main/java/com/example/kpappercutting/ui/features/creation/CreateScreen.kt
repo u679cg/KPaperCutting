@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.sp
 import com.example.kpappercutting.R
 import com.example.kpappercutting.ui.features.creation.component.FoldTechniqueBottomSheet
 import com.example.kpappercutting.ui.features.creation.component.PaperCanvas
+import com.example.kpappercutting.ui.features.creation.component.PatternBottomSheet
 import com.example.kpappercutting.ui.features.creation.engine.PaperCutEngine
 import com.example.kpappercutting.ui.theme.PaperRed
 import kotlin.math.roundToInt
@@ -71,12 +72,14 @@ fun CreateScreen(
     uiState: CreateUiState,
     engine: PaperCutEngine,
     onAction: (CreateUiAction) -> Unit,
+    onOpenAddPattern: () -> Unit,
     onMenuAction: (CreationMenuAction) -> Unit = {},
     onBack: () -> Unit = {}
 ) {
     var isColorPaletteVisible by rememberSaveable { mutableStateOf(false) }
     var isEraserSliderVisible by rememberSaveable { mutableStateOf(false) }
     var isFoldSheetVisible by rememberSaveable { mutableStateOf(false) }
+    var isPatternSheetVisible by rememberSaveable { mutableStateOf(false) }
     var colorAnchorBounds by remember { mutableStateOf<Rect?>(null) }
     var eraserAnchorBounds by remember { mutableStateOf<Rect?>(null) }
 
@@ -110,9 +113,11 @@ fun CreateScreen(
                 onSelectTool = {
                     dismissFloatingPanels()
                     isFoldSheetVisible = false
+                    isPatternSheetVisible = false
                     onAction(CreateUiAction.SelectTool(it))
                 },
                 onEraserToolClick = {
+                    isPatternSheetVisible = false
                     if (uiState.selectedTool == EditTool.ERASER) {
                         isColorPaletteVisible = false
                         isEraserSliderVisible = !isEraserSliderVisible
@@ -124,8 +129,15 @@ fun CreateScreen(
                 },
                 isColorControlSelected = isColorPaletteVisible,
                 onColorControlClick = {
+                    isPatternSheetVisible = false
                     isEraserSliderVisible = false
                     isColorPaletteVisible = !isColorPaletteVisible
+                },
+                isPatternControlSelected = isPatternSheetVisible || uiState.activePattern != null,
+                onPatternClick = {
+                    dismissFloatingPanels()
+                    isFoldSheetVisible = false
+                    isPatternSheetVisible = !isPatternSheetVisible
                 },
                 onEraserAnchorPositioned = { eraserAnchorBounds = it },
                 onColorAnchorPositioned = { colorAnchorBounds = it }
@@ -190,6 +202,7 @@ fun CreateScreen(
                         selectedColor = uiState.selectedPaperColor,
                         onSelectColor = { color ->
                             onAction(CreateUiAction.SelectPaperColor(color))
+                            isColorPaletteVisible = false
                         }
                     )
                 }
@@ -219,6 +232,22 @@ fun CreateScreen(
                     onAction(CreateUiAction.SetContinuousFoldLayerCount(layerCount))
                 },
                 onDismissRequest = { isFoldSheetVisible = false }
+            )
+        }
+
+        if (isPatternSheetVisible) {
+            PatternBottomSheet(
+                builtinPatterns = uiState.builtinPatterns,
+                customPatterns = uiState.customPatterns,
+                onAddPatternClick = {
+                    isPatternSheetVisible = false
+                    onOpenAddPattern()
+                },
+                onPatternSelected = { pattern ->
+                    onAction(CreateUiAction.StartPatternPlacement(pattern))
+                    isPatternSheetVisible = false
+                },
+                onDismissRequest = { isPatternSheetVisible = false }
             )
         }
     }
@@ -464,6 +493,8 @@ private fun TopToolbar(
     onRedo: () -> Unit,
     onSelectTool: (EditTool) -> Unit,
     onEraserToolClick: () -> Unit,
+    isPatternControlSelected: Boolean,
+    onPatternClick: () -> Unit,
     isColorControlSelected: Boolean,
     onColorControlClick: () -> Unit,
     onEraserAnchorPositioned: (Rect) -> Unit,
@@ -527,8 +558,8 @@ private fun TopToolbar(
             ToolbarIcon(
                 drawableRes = R.drawable.ic_pattern,
                 enabled = true,
-                selected = false,
-                onClick = {}
+                selected = isPatternControlSelected,
+                onClick = onPatternClick
             )
             Spacer(modifier = Modifier.weight(1f))
             ToolbarIcon(
@@ -809,6 +840,7 @@ fun CreateScreenPreview() {
             ),
             engine = PaperCutEngine(),
             onAction = {},
+            onOpenAddPattern = {},
             onMenuAction = {}
         )
     }
