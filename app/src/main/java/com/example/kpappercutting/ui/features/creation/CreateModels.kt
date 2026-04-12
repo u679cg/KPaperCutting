@@ -1,10 +1,29 @@
 // 该文件用于定义创作页专属模型，包括工具类型、菜单动作和折叠模式等基础枚举。
 package com.example.kpappercutting.ui.features.creation
 
+import com.example.kpappercutting.data.model.PaperShape
+
 enum class EditTool {
     SCISSORS,
     PENCIL,
     ERASER
+}
+
+enum class CreationMode(
+    val label: String,
+    val defaultShape: PaperShape
+) {
+    TRADITIONAL(label = "传统", defaultShape = PaperShape.CIRCLE),
+    FREE(label = "自由", defaultShape = PaperShape.SQUARE);
+
+    companion object {
+        fun fromShape(shape: PaperShape): CreationMode {
+            return when (shape) {
+                PaperShape.CIRCLE -> TRADITIONAL
+                PaperShape.SQUARE -> FREE
+            }
+        }
+    }
 }
 
 enum class EraserSize(

@@ -149,7 +149,7 @@ class PaperCutEngine {
     private var foldedBasePath: Path? = null
     private var foldedBaseSketchBitmap: Bitmap? = null
 
-    var selectedShape: PaperShape = PaperShape.SQUARE
+    var selectedShape: PaperShape = PaperShape.CIRCLE
         private set
     var selectedTool: EditTool = EditTool.SCISSORS
         private set

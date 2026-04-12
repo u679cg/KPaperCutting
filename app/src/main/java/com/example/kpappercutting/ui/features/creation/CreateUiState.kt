@@ -4,11 +4,14 @@ package com.example.kpappercutting.ui.features.creation
 import com.example.kpappercutting.data.model.PaperShape
 
 data class CreateUiState(
-    val selectedShape: PaperShape = PaperShape.SQUARE,
+    val creationMode: CreationMode = CreationMode.TRADITIONAL,
+    val selectedShape: PaperShape = PaperShape.CIRCLE,
     val selectedTool: EditTool = EditTool.SCISSORS,
     val selectedEraserSize: EraserSize = EraserSize.MEDIUM,
     val selectedPaperColor: Int = CreationPaperDefaults.DEFAULT_PAPER_COLOR,
     val foldMode: FoldMode = FoldMode.SIX_PART,
+    val selectedFoldTechnique: FoldTechniqueOption = FoldTechniqueOption.SIX_PART,
+    val continuousFoldLayerCount: Int = 4,
     val availableFoldModes: List<FoldMode> = FoldCatalog.selectableModes,
     val isFolded: Boolean = false,
     val canUndo: Boolean = false,

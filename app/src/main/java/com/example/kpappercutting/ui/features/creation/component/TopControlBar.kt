@@ -36,6 +36,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.kpappercutting.data.model.PaperShape
+import com.example.kpappercutting.ui.features.creation.CreationMode
 import com.example.kpappercutting.ui.features.creation.CreationMenuAction
 import com.example.kpappercutting.ui.theme.PaperRed
 
@@ -78,14 +79,14 @@ fun CreationTopControlBar(
                     .weight(1f)
                     .fillMaxHeight()
                 ShapeTab(
-                    text = "圆形",
+                    text = CreationMode.TRADITIONAL.label,
                     isSelected = currentShape == PaperShape.CIRCLE,
                     modifier = tabModifier
                 ) {
                     onShapeChange(PaperShape.CIRCLE)
                 }
                 ShapeTab(
-                    text = "方形",
+                    text = CreationMode.FREE.label,
                     isSelected = currentShape == PaperShape.SQUARE,
                     modifier = tabModifier
                 ) {

@@ -6,10 +6,13 @@ import com.example.kpappercutting.data.model.PaperShape
 
 sealed interface CreateUiAction {
     data class SelectShape(val shape: PaperShape) : CreateUiAction
+    data class SelectCreationMode(val mode: CreationMode) : CreateUiAction
     data class SelectTool(val tool: EditTool) : CreateUiAction
     data class SelectEraserSize(val size: EraserSize) : CreateUiAction
     data class SelectPaperColor(val color: Int) : CreateUiAction
     data class SelectFoldMode(val mode: FoldMode) : CreateUiAction
+    data class SelectFoldTechnique(val technique: FoldTechniqueOption) : CreateUiAction
+    data class SetContinuousFoldLayerCount(val layerCount: Int) : CreateUiAction
     data class StartStroke(val point: Offset) : CreateUiAction
     data class AppendStrokePoint(val point: Offset) : CreateUiAction
     data class TransformCanvas(

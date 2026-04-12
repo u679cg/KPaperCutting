@@ -13,6 +13,71 @@ enum class FoldMode {
     EIGHT_POINT
 }
 
+enum class FoldTechniqueCategory(val title: String) {
+    TWO_PART("二分法"),
+    THREE_PART("三分法"),
+    FIVE_PART("五分法"),
+    CONTINUOUS_TWO_PART("二分连续")
+}
+
+enum class FoldTechniqueOption(
+    val label: String,
+    val category: FoldTechniqueCategory,
+    val foldMode: FoldMode?
+) {
+    TWO_PART(label = "二分法", category = FoldTechniqueCategory.TWO_PART, foldMode = FoldMode.TWO_PART),
+    FOUR_PART(label = "四分法", category = FoldTechniqueCategory.TWO_PART, foldMode = FoldMode.FOUR_PART),
+    EIGHT_PART(label = "八分法", category = FoldTechniqueCategory.TWO_PART, foldMode = FoldMode.EIGHT_PART),
+    SIXTEEN_PART(label = "十六分法", category = FoldTechniqueCategory.TWO_PART, foldMode = FoldMode.EIGHT_POINT),
+    THREE_PART(label = "三分法", category = FoldTechniqueCategory.THREE_PART, foldMode = FoldMode.THREE_PART),
+    SIX_PART(label = "六分法", category = FoldTechniqueCategory.THREE_PART, foldMode = FoldMode.SIX_PART),
+    TWELVE_PART(label = "十二分法", category = FoldTechniqueCategory.THREE_PART, foldMode = FoldMode.TWELVE_PART),
+    FIVE_PART(label = "五分法", category = FoldTechniqueCategory.FIVE_PART, foldMode = FoldMode.FIVE_POINT),
+    TEN_PART(label = "十分法", category = FoldTechniqueCategory.FIVE_PART, foldMode = FoldMode.TEN_PART),
+    CONTINUOUS(label = "二分连续法", category = FoldTechniqueCategory.CONTINUOUS_TWO_PART, foldMode = null);
+
+    fun effectiveFoldMode(continuousLayerCount: Int): FoldMode {
+        return when (this) {
+            CONTINUOUS -> {
+                require(continuousLayerCount in ContinuousFoldLayerOptions) {
+                    "Unsupported continuous fold layer count: $continuousLayerCount"
+                }
+                // TODO: Replace this temporary fallback with real continuous binary-fold geometry.
+                // For now we keep the UI/state selectable while the engine renders with TWO_PART.
+                FoldMode.TWO_PART
+            }
+
+            else -> requireNotNull(foldMode)
+        }
+    }
+
+    companion object {
+        val selectableOptionsByCategory: Map<FoldTechniqueCategory, List<FoldTechniqueOption>> = linkedMapOf(
+            FoldTechniqueCategory.TWO_PART to listOf(TWO_PART, FOUR_PART, EIGHT_PART, SIXTEEN_PART),
+            FoldTechniqueCategory.THREE_PART to listOf(THREE_PART, SIX_PART, TWELVE_PART),
+            FoldTechniqueCategory.FIVE_PART to listOf(FIVE_PART, TEN_PART),
+            FoldTechniqueCategory.CONTINUOUS_TWO_PART to listOf(CONTINUOUS)
+        )
+
+        fun fromFoldMode(mode: FoldMode): FoldTechniqueOption {
+            return when (mode) {
+                FoldMode.TWO_PART -> TWO_PART
+                FoldMode.THREE_PART -> THREE_PART
+                FoldMode.FOUR_PART -> FOUR_PART
+                FoldMode.FIVE_POINT -> FIVE_PART
+                FoldMode.SIX_PART -> SIX_PART
+                FoldMode.EIGHT_PART -> EIGHT_PART
+                FoldMode.TEN_PART -> TEN_PART
+                FoldMode.TWELVE_PART -> TWELVE_PART
+                FoldMode.EIGHT_POINT -> SIXTEEN_PART
+                FoldMode.NONE -> TWO_PART
+            }
+        }
+    }
+}
+
+val ContinuousFoldLayerOptions: List<Int> = listOf(4, 6, 8, 10)
+
 data class FoldGeometry(
     val wedgeSweepAngle: Float,
     val rotationCopies: Int,
@@ -128,7 +193,7 @@ object FoldCatalog {
         ),
         FoldMode.TWELVE_PART to FoldSpec(
             mode = FoldMode.TWELVE_PART,
-            displayName = "十二分",
+            displayName = "十二分法",
             legacyNames = emptyList(),
             segmentCount = 12,
             baseUnitAngle = 15f,
@@ -140,7 +205,7 @@ object FoldCatalog {
         ),
         FoldMode.EIGHT_POINT to FoldSpec(
             mode = FoldMode.EIGHT_POINT,
-            displayName = "十六分",
+            displayName = "十六分法",
             legacyNames = listOf("八角折法"),
             segmentCount = 16,
             baseUnitAngle = 22.5f,

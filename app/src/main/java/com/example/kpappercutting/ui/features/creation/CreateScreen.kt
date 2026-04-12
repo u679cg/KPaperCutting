@@ -25,6 +25,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -33,8 +34,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalConfiguration
@@ -52,8 +53,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.kpappercutting.R
-import com.example.kpappercutting.data.model.PaperShape
-import com.example.kpappercutting.ui.features.creation.component.FoldTechniqueWheelSelector
+import com.example.kpappercutting.ui.features.creation.component.FoldTechniqueBottomSheet
 import com.example.kpappercutting.ui.features.creation.component.PaperCanvas
 import com.example.kpappercutting.ui.features.creation.engine.PaperCutEngine
 import com.example.kpappercutting.ui.theme.PaperRed
@@ -69,96 +69,115 @@ fun CreateScreen(
 ) {
     var isColorPaletteVisible by rememberSaveable { mutableStateOf(false) }
     var isEraserSliderVisible by rememberSaveable { mutableStateOf(false) }
+    var isFoldSheetVisible by rememberSaveable { mutableStateOf(false) }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFFFDF8F2))
-            .padding(top = 12.dp, bottom = 0.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(top = 12.dp, bottom = 0.dp)
     ) {
-        CreateHeader(
-            isTraditionalSelected = uiState.selectedShape == PaperShape.SQUARE,
-            onTraditionalClick = { onAction(CreateUiAction.SelectShape(PaperShape.SQUARE)) },
-            onFreeClick = { onAction(CreateUiAction.SelectShape(PaperShape.CIRCLE)) },
-            onBack = onBack,
-            onShareClick = { onMenuAction(CreationMenuAction.EXPORT_TO_GALLERY) }
-        )
-        TopToolbar(
-            activeTool = uiState.selectedTool,
-            canUndo = uiState.canUndo,
-            canRedo = uiState.canRedo,
-            onUndo = { onAction(CreateUiAction.Undo) },
-            onRedo = { onAction(CreateUiAction.Redo) },
-            onSelectTool = {
-                isEraserSliderVisible = false
-                onAction(CreateUiAction.SelectTool(it))
-            },
-            onEraserToolClick = {
-                if (uiState.selectedTool == EditTool.ERASER) {
-                    isEraserSliderVisible = !isEraserSliderVisible
-                } else {
-                    isEraserSliderVisible = false
-                    onAction(CreateUiAction.SelectTool(EditTool.ERASER))
-                }
-            },
-            isColorControlSelected = isColorPaletteVisible,
-            onColorControlClick = { isColorPaletteVisible = !isColorPaletteVisible }
-        )
-
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            PaperCanvas(
-                uiState = uiState,
-                engine = engine,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = 96.dp),
-                onAction = onAction
+            CreateHeader(
+                selectedMode = uiState.creationMode,
+                onModeSelected = { onAction(CreateUiAction.SelectCreationMode(it)) },
+                onBack = onBack,
+                onShareClick = { onMenuAction(CreationMenuAction.EXPORT_TO_GALLERY) }
+            )
+            TopToolbar(
+                activeTool = uiState.selectedTool,
+                canUndo = uiState.canUndo,
+                canRedo = uiState.canRedo,
+                onUndo = { onAction(CreateUiAction.Undo) },
+                onRedo = { onAction(CreateUiAction.Redo) },
+                onSelectTool = {
+                    isEraserSliderVisible = false
+                    onAction(CreateUiAction.SelectTool(it))
+                },
+                onEraserToolClick = {
+                    if (uiState.selectedTool == EditTool.ERASER) {
+                        isEraserSliderVisible = !isEraserSliderVisible
+                    } else {
+                        isEraserSliderVisible = false
+                        onAction(CreateUiAction.SelectTool(EditTool.ERASER))
+                    }
+                },
+                isColorControlSelected = isColorPaletteVisible,
+                onColorControlClick = { isColorPaletteVisible = !isColorPaletteVisible }
             )
 
-            androidx.compose.animation.AnimatedVisibility(
+            Box(
                 modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(top = 14.dp, start = 12.dp),
-                visible = uiState.selectedTool == EditTool.ERASER && isEraserSliderVisible,
-                enter = fadeIn() + slideInVertically(initialOffsetY = { -it / 2 }),
-                exit = fadeOut() + slideOutVertically(targetOffsetY = { -it / 3 })
+                    .weight(1f)
+                    .fillMaxWidth()
             ) {
-                EraserSizeSliderCard(
-                    selectedSize = uiState.selectedEraserSize,
-                    onSelectSize = { onAction(CreateUiAction.SelectEraserSize(it)) }
+                PaperCanvas(
+                    uiState = uiState,
+                    engine = engine,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = 112.dp),
+                    onAction = onAction
+                )
+
+                androidx.compose.animation.AnimatedVisibility(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(top = 14.dp, start = 12.dp),
+                    visible = uiState.selectedTool == EditTool.ERASER && isEraserSliderVisible,
+                    enter = fadeIn() + slideInVertically(initialOffsetY = { -it / 2 }),
+                    exit = fadeOut() + slideOutVertically(targetOffsetY = { -it / 3 })
+                ) {
+                    EraserSizeSliderCard(
+                        selectedSize = uiState.selectedEraserSize,
+                        onSelectSize = { onAction(CreateUiAction.SelectEraserSize(it)) }
+                    )
+                }
+
+                androidx.compose.animation.AnimatedVisibility(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 14.dp, end = 12.dp),
+                    visible = isColorPaletteVisible,
+                    enter = fadeIn() + slideInVertically(initialOffsetY = { -it / 2 }),
+                    exit = fadeOut() + slideOutVertically(targetOffsetY = { -it / 3 })
+                ) {
+                    ColorPaperStrip(
+                        selectedColor = uiState.selectedPaperColor,
+                        onSelectColor = { color ->
+                            onAction(CreateUiAction.SelectPaperColor(color))
+                        }
+                    )
+                }
+
+                BottomActionBar(
+                    selectedFoldTechnique = uiState.selectedFoldTechnique,
+                    continuousFoldLayerCount = uiState.continuousFoldLayerCount,
+                    canToggleFold = uiState.foldMode != FoldMode.NONE,
+                    isFolded = uiState.isFolded,
+                    onClear = { onAction(CreateUiAction.ClearCanvas) },
+                    onOpenFoldSheet = { isFoldSheetVisible = true },
+                    onExpand = { onAction(CreateUiAction.ToggleFold) },
+                    modifier = Modifier.align(Alignment.BottomCenter)
                 )
             }
+        }
 
-            androidx.compose.animation.AnimatedVisibility(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 14.dp, end = 12.dp),
-                visible = isColorPaletteVisible,
-                enter = fadeIn() + slideInVertically(initialOffsetY = { -it / 2 }),
-                exit = fadeOut() + slideOutVertically(targetOffsetY = { -it / 3 })
-            ) {
-                ColorPaperStrip(
-                    selectedColor = uiState.selectedPaperColor,
-                    onSelectColor = { color ->
-                        onAction(CreateUiAction.SelectPaperColor(color))
-                    }
-                )
-            }
-
-            BottomActionBar(
-                canToggleFold = uiState.foldMode != FoldMode.NONE,
-                isFolded = uiState.isFolded,
-                currentFoldMode = uiState.foldMode,
-                availableFoldModes = uiState.availableFoldModes,
-                onClear = { onAction(CreateUiAction.ClearCanvas) },
-                onSelectFoldMode = { onAction(CreateUiAction.SelectFoldMode(it)) },
-                onExpand = { onAction(CreateUiAction.ToggleFold) },
-                modifier = Modifier.align(Alignment.BottomCenter)
+        if (isFoldSheetVisible) {
+            FoldTechniqueBottomSheet(
+                currentTechnique = uiState.selectedFoldTechnique,
+                continuousFoldLayerCount = uiState.continuousFoldLayerCount,
+                onTechniqueSelected = { technique ->
+                    onAction(CreateUiAction.SelectFoldTechnique(technique))
+                    isFoldSheetVisible = false
+                },
+                onContinuousLayerCountChange = { layerCount ->
+                    onAction(CreateUiAction.SetContinuousFoldLayerCount(layerCount))
+                },
+                onDismissRequest = { isFoldSheetVisible = false }
             )
         }
     }
@@ -166,9 +185,8 @@ fun CreateScreen(
 
 @Composable
 private fun CreateHeader(
-    isTraditionalSelected: Boolean,
-    onTraditionalClick: () -> Unit,
-    onFreeClick: () -> Unit,
+    selectedMode: CreationMode,
+    onModeSelected: (CreationMode) -> Unit,
     onBack: () -> Unit,
     onShareClick: () -> Unit
 ) {
@@ -201,16 +219,16 @@ private fun CreateHeader(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 ModeTab(
-                    text = "传统",
-                    selected = isTraditionalSelected,
+                    text = CreationMode.TRADITIONAL.label,
+                    selected = selectedMode == CreationMode.TRADITIONAL,
                     modifier = Modifier.weight(1f),
-                    onClick = onTraditionalClick
+                    onClick = { onModeSelected(CreationMode.TRADITIONAL) }
                 )
                 ModeTab(
-                    text = "自由",
-                    selected = !isTraditionalSelected,
+                    text = CreationMode.FREE.label,
+                    selected = selectedMode == CreationMode.FREE,
                     modifier = Modifier.weight(1f),
-                    onClick = onFreeClick
+                    onClick = { onModeSelected(CreationMode.FREE) }
                 )
             }
         }
@@ -275,12 +293,12 @@ private fun SimpleIconButton(
 
 @Composable
 private fun BottomActionBar(
+    selectedFoldTechnique: FoldTechniqueOption,
+    continuousFoldLayerCount: Int,
     canToggleFold: Boolean,
     isFolded: Boolean,
-    currentFoldMode: FoldMode,
-    availableFoldModes: List<FoldMode>,
     onClear: () -> Unit,
-    onSelectFoldMode: (FoldMode) -> Unit,
+    onOpenFoldSheet: () -> Unit,
     onExpand: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -289,8 +307,6 @@ private fun BottomActionBar(
         configuration.screenWidthDp.dp - 32.dp < 360.dp
     }
     val sideButtonSize = if (compactLayout) 52.dp else 56.dp
-    val selectorWidth = if (compactLayout) 200.dp else 240.dp
-    val selectorHeight = if (compactLayout) 56.dp else 60.dp
 
     Box(
         modifier = modifier
@@ -308,14 +324,13 @@ private fun BottomActionBar(
                 onClick = onClear
             )
             Spacer(modifier = Modifier.width(12.dp))
-            FoldTechniqueWheelSelector(
+            FoldTechniqueEntryButton(
                 modifier = Modifier
-                    .width(selectorWidth)
-                    .height(selectorHeight),
-                compact = compactLayout,
-                currentMode = currentFoldMode,
-                availableModes = availableFoldModes,
-                onModeSelected = onSelectFoldMode
+                    .weight(1f)
+                    .height(if (compactLayout) 56.dp else 60.dp),
+                selectedFoldTechnique = selectedFoldTechnique,
+                continuousFoldLayerCount = continuousFoldLayerCount,
+                onClick = onOpenFoldSheet
             )
             Spacer(modifier = Modifier.width(12.dp))
             CircleActionButton(
@@ -323,6 +338,51 @@ private fun BottomActionBar(
                 enabled = canToggleFold,
                 size = sideButtonSize,
                 onClick = onExpand
+            )
+        }
+    }
+}
+
+@Composable
+private fun FoldTechniqueEntryButton(
+    selectedFoldTechnique: FoldTechniqueOption,
+    continuousFoldLayerCount: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val subtitle = if (selectedFoldTechnique == FoldTechniqueOption.CONTINUOUS) {
+        "${selectedFoldTechnique.label} ${continuousFoldLayerCount}层"
+    } else {
+        selectedFoldTechnique.label
+    }
+
+    Surface(
+        modifier = modifier
+            .shadow(4.dp, RoundedCornerShape(24.dp), clip = false)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(24.dp),
+        color = Color.White
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp, vertical = 10.dp),
+            horizontalArrangement =  Arrangement.Absolute.Center,
+            verticalAlignment =  Alignment.CenterVertically
+
+
+        ) {
+            Text(
+                text = "当前折法：",
+                color = Color(0xFF45403B),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                text = subtitle,
+                color = PaperRed,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold
             )
         }
     }
@@ -660,7 +720,8 @@ fun CreateScreenPreview() {
     MaterialTheme {
         CreateScreen(
             uiState = CreateUiState(
-                selectedShape = PaperShape.SQUARE,
+                creationMode = CreationMode.TRADITIONAL,
+                selectedShape = CreationMode.TRADITIONAL.defaultShape,
                 selectedTool = EditTool.SCISSORS,
                 canUndo = true
             ),
