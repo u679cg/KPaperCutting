@@ -3,6 +3,7 @@ package com.example.kpappercutting.ui.features.creation
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,8 +39,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
@@ -50,6 +55,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.kpappercutting.R
@@ -70,6 +77,13 @@ fun CreateScreen(
     var isColorPaletteVisible by rememberSaveable { mutableStateOf(false) }
     var isEraserSliderVisible by rememberSaveable { mutableStateOf(false) }
     var isFoldSheetVisible by rememberSaveable { mutableStateOf(false) }
+    var colorAnchorBounds by remember { mutableStateOf<Rect?>(null) }
+    var eraserAnchorBounds by remember { mutableStateOf<Rect?>(null) }
+
+    val dismissFloatingPanels = {
+        isColorPaletteVisible = false
+        isEraserSliderVisible = false
+    }
 
     Box(
         modifier = Modifier
@@ -94,25 +108,38 @@ fun CreateScreen(
                 onUndo = { onAction(CreateUiAction.Undo) },
                 onRedo = { onAction(CreateUiAction.Redo) },
                 onSelectTool = {
-                    isEraserSliderVisible = false
+                    dismissFloatingPanels()
+                    isFoldSheetVisible = false
                     onAction(CreateUiAction.SelectTool(it))
                 },
                 onEraserToolClick = {
                     if (uiState.selectedTool == EditTool.ERASER) {
+                        isColorPaletteVisible = false
                         isEraserSliderVisible = !isEraserSliderVisible
                     } else {
-                        isEraserSliderVisible = false
+                        isColorPaletteVisible = false
+                        isEraserSliderVisible = true
                         onAction(CreateUiAction.SelectTool(EditTool.ERASER))
                     }
                 },
                 isColorControlSelected = isColorPaletteVisible,
-                onColorControlClick = { isColorPaletteVisible = !isColorPaletteVisible }
+                onColorControlClick = {
+                    isEraserSliderVisible = false
+                    isColorPaletteVisible = !isColorPaletteVisible
+                },
+                onEraserAnchorPositioned = { eraserAnchorBounds = it },
+                onColorAnchorPositioned = { colorAnchorBounds = it }
             )
 
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
+                    .pointerInput(isColorPaletteVisible, isEraserSliderVisible) {
+                        if (isColorPaletteVisible || isEraserSliderVisible) {
+                            detectTapGestures(onTap = { dismissFloatingPanels() })
+                        }
+                    }
             ) {
                 PaperCanvas(
                     uiState = uiState,
@@ -126,7 +153,14 @@ fun CreateScreen(
                 androidx.compose.animation.AnimatedVisibility(
                     modifier = Modifier
                         .align(Alignment.TopStart)
-                        .padding(top = 14.dp, start = 12.dp),
+                        .padding(top = 14.dp)
+                        .then(
+                            panelPlacementModifier(
+                                anchorBounds = eraserAnchorBounds,
+                                panelWidth = 214.dp,
+                                placeOnStartSide = true
+                            )
+                        ),
                     visible = uiState.selectedTool == EditTool.ERASER && isEraserSliderVisible,
                     enter = fadeIn() + slideInVertically(initialOffsetY = { -it / 2 }),
                     exit = fadeOut() + slideOutVertically(targetOffsetY = { -it / 3 })
@@ -139,8 +173,15 @@ fun CreateScreen(
 
                 androidx.compose.animation.AnimatedVisibility(
                     modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(top = 14.dp, end = 12.dp),
+                        .align(Alignment.TopStart)
+                        .padding(top = 14.dp)
+                        .then(
+                            panelPlacementModifier(
+                                anchorBounds = colorAnchorBounds,
+                                panelWidth = 242.dp,
+                                placeOnStartSide = false
+                            )
+                        ),
                     visible = isColorPaletteVisible,
                     enter = fadeIn() + slideInVertically(initialOffsetY = { -it / 2 }),
                     exit = fadeOut() + slideOutVertically(targetOffsetY = { -it / 3 })
@@ -424,7 +465,9 @@ private fun TopToolbar(
     onSelectTool: (EditTool) -> Unit,
     onEraserToolClick: () -> Unit,
     isColorControlSelected: Boolean,
-    onColorControlClick: () -> Unit
+    onColorControlClick: () -> Unit,
+    onEraserAnchorPositioned: (Rect) -> Unit,
+    onColorAnchorPositioned: (Rect) -> Unit
 ) {
     Surface(
         modifier = Modifier
@@ -477,7 +520,8 @@ private fun TopToolbar(
                 drawableRes = R.drawable.ic_eraser,
                 enabled = true,
                 selected = activeTool == EditTool.ERASER,
-                onClick = onEraserToolClick
+                onClick = onEraserToolClick,
+                onPositioned = onEraserAnchorPositioned
             )
             Spacer(modifier = Modifier.weight(1f))
             ToolbarIcon(
@@ -498,7 +542,8 @@ private fun TopToolbar(
                 drawableRes = R.drawable.ic_color_control,
                 enabled = true,
                 selected = isColorControlSelected,
-                onClick = onColorControlClick
+                onClick = onColorControlClick,
+                onPositioned = onColorAnchorPositioned
             )
         }
     }
@@ -684,7 +729,8 @@ private fun ToolbarIcon(
     drawableRes: Int,
     enabled: Boolean,
     selected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onPositioned: ((Rect) -> Unit)? = null
 ) {
     val tint = when {
         selected -> PaperRed
@@ -695,6 +741,15 @@ private fun ToolbarIcon(
     Box(
         modifier = Modifier
             .size(26.dp)
+            .then(
+                if (onPositioned != null) {
+                    Modifier.onGloballyPositioned { coordinates ->
+                        onPositioned(coordinates.boundsInRoot())
+                    }
+                } else {
+                    Modifier
+                }
+            )
             .clip(CircleShape)
             .background(if (selected) Color(0xFFFCF0E1) else Color.Transparent)
 //            .border(
@@ -712,6 +767,33 @@ private fun ToolbarIcon(
             modifier = Modifier.size(18.dp)
         )
     }
+}
+
+@Composable
+private fun panelPlacementModifier(
+    anchorBounds: Rect?,
+    panelWidth: Dp,
+    placeOnStartSide: Boolean
+): Modifier {
+    val configuration = LocalConfiguration.current
+    val density = LocalDensity.current
+    val screenWidth = configuration.screenWidthDp.dp
+    val anchorCenterX = anchorBounds?.center?.x
+    val fallbackOffset = if (placeOnStartSide) 12.dp else screenWidth - panelWidth - 12.dp
+    val mirroredOffset = remember(anchorCenterX, screenWidth, panelWidth, placeOnStartSide, density) {
+        if (anchorCenterX == null) {
+            fallbackOffset
+        } else {
+            val centerDp = with(density) { anchorCenterX.toDp() }
+            val centeredOffset = if (placeOnStartSide) {
+                centerDp - panelWidth / 2
+            } else {
+                screenWidth - centerDp - panelWidth / 2
+            }
+            centeredOffset.coerceIn(12.dp, screenWidth - panelWidth - 12.dp)
+        }
+    }
+    return Modifier.padding(start = mirroredOffset)
 }
 
 @Preview(showBackground = true, device = "spec:width=1080px,height=2340px,dpi=440")
