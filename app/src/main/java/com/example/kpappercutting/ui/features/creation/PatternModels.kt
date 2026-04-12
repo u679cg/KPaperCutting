@@ -30,7 +30,9 @@ data class CustomPattern(
     override val id: String = UUID.randomUUID().toString(),
     override val displayName: String,
     val uriString: String,
-    val thumbnailUriString: String = uriString
+    val thumbnailUriString: String = uriString,
+    val normalizedPath: Path? = null,
+    val isCuttable: Boolean = normalizedPath != null
 ) : PatternSource
 
 data class EditablePatternState(
@@ -61,7 +63,7 @@ object PatternCatalog {
                 BuiltinPattern.SQUARE -> buildSquarePath()
             }
 
-            is CustomPattern -> null
+            is CustomPattern -> source.normalizedPath?.let(::Path)
         }
     }
 

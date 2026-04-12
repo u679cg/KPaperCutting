@@ -92,8 +92,29 @@ fun CreateRoute(
             AddPatternScreen(
                 customPatterns = viewModel.uiState.customPatterns,
                 onBack = { currentSubRoute = CreateSubRoute.MAIN },
-                onPatternImported = { pattern ->
-                    viewModel.onAction(CreateUiAction.AddCustomPattern(pattern))
+                onPatternImported = { uri ->
+                    coroutineScope.launch {
+                        val importResult = withContext(Dispatchers.IO) {
+                            PatternImportUtils.importCustomPattern(
+                                context = context,
+                                uri = uri,
+                                displayName = "自定义图案 ${viewModel.uiState.customPatterns.size + 1}"
+                            )
+                        }
+                        importResult.fold(
+                            onSuccess = { pattern ->
+                                viewModel.onAction(CreateUiAction.AddCustomPattern(pattern))
+                                Toast.makeText(context, "图案已导入并提取轮廓", Toast.LENGTH_SHORT).show()
+                            },
+                            onFailure = { throwable ->
+                                Toast.makeText(
+                                    context,
+                                    throwable.message ?: "图案导入失败",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        )
+                    }
                 }
             )
         }

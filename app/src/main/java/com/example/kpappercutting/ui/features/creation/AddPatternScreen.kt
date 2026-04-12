@@ -33,18 +33,13 @@ import androidx.compose.ui.unit.sp
 fun AddPatternScreen(
     customPatterns: List<CustomPattern>,
     onBack: () -> Unit,
-    onPatternImported: (CustomPattern) -> Unit
+    onPatternImported: (Uri) -> Unit
 ) {
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         uri ?: return@rememberLauncherForActivityResult
-        onPatternImported(
-            CustomPattern(
-                displayName = "自定义图案 ${customPatterns.size + 1}",
-                uriString = uri.toString()
-            )
-        )
+        onPatternImported(uri)
     }
 
     Column(
@@ -97,7 +92,7 @@ fun AddPatternScreen(
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = "后续这里会把 PNG 图片解析为可镂刻的轮廓图案。本次先完成导入入口、记录 URI 和图案管理框架。",
+                    text = "这里会把 PNG 图片按透明度提取为可镂刻轮廓，并加入图案列表。建议使用透明背景、主体清晰的 PNG。",
                     color = Color(0xFF7C736A),
                     fontSize = 14.sp,
                     lineHeight = 22.sp
@@ -124,7 +119,7 @@ fun AddPatternScreen(
                     }
                 }
                 Text(
-                    text = "TODO: 这里后续接入 PNG 透明区域提取 / 边缘轮廓追踪 / Path 矢量化。",
+                    text = "当前实现：按 alpha 提取基础轮廓并转成可切割 Path。后续可继续优化为更平滑的边缘追踪。",
                     color = Color(0xFF8B837B),
                     fontSize = 12.sp
                 )
@@ -154,6 +149,13 @@ fun AddPatternScreen(
                                 color = Color(0xFF45403B),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.SemiBold
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = if (pattern.isCuttable) "已提取可切割轮廓" else "轮廓提取失败",
+                                color = if (pattern.isCuttable) Color(0xFF4F8A4A) else Color(0xFFB26A5A),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(

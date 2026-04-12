@@ -100,15 +100,15 @@ fun PatternBottomSheet(
                     PatternSourceCard(
                         title = pattern.displayName,
                         source = pattern,
-                        enabled = false,
-                        subtitle = "PNG 待解析",
-                        onClick = {}
+                        enabled = pattern.isCuttable,
+                        subtitle = if (pattern.isCuttable) "已提取轮廓" else "提取失败",
+                        onClick = { onPatternSelected(pattern) }
                     )
                 }
             }
             Spacer(modifier = Modifier.height(14.dp))
             Text(
-                text = "内置图案可直接放置并确认镂刻；自定义 PNG 已预留导入入口，后续会接入轮廓提取。",
+                text = "内置图案和成功提取轮廓的 PNG 图案都可直接放置并确认镂刻。",
                 color = Color(0xFF817970),
                 fontSize = 12.sp,
                 lineHeight = 18.sp
